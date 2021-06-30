@@ -192,8 +192,16 @@ function Base.show(io::IO, screen::xcb_screen_t)
 end
 
 function format_bignumber(number)
-    number_str = string(number)
-    join(map((i, x) -> (mod(i, 3) == 0 && i ≠ length(number_str) ? "," : "") * x, length(number_str):-1:1, number_str))
+    str = string(number)
+    seq = map(zip(length(str):-1:1, str)) do (i, x)
+        if i % 3 == 0 && i ≠ length(str)
+            sep = ','
+        else
+            sep = ""
+        end
+        sep * x
+    end
+    join(seq)
 end
 
 prettyprint(io, desc, vals) = (description = join.(zip(rpad.(desc, 20), vals), ": "); print(io, join("    " .* description, "\n")))
