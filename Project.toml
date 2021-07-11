@@ -1,6 +1,6 @@
 name = "XCB"
 uuid = "16167f82-ea26-5cba-b1de-ed6fd5e30a10"
-version = "0.4.0"
+version = "0.4.1"
 
 [deps]
 CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
@@ -17,7 +17,7 @@ CEnum = "0.4"
 DocStringExtensions = "0.8"
 Reexport = "1"
 UnPack = "1"
-WindowAbstractions = "0.3"
+WindowAbstractions = "0.4"
 Xorg_libxcb_jll = "1.13"
 Xorg_xcb_util_jll = "0.4"
 julia = "1.5"
