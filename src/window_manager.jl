@@ -4,7 +4,7 @@ mutable struct XWindowManager <: AbstractWindowManager
     keymap::Keymap
     callbacks::Dict{XCBWindow, WindowCallbacks}
     function XWindowManager(conn::Connection, windows::Dict{xcb_window_t,XCBWindow}, keymap::Keymap, callbacks::Dict{XCBWindow, WindowCallbacks})
-        wm = new(conn, windows, Keymap(conn), Dict())
+        wm = new(conn, windows, keymap, Dict())
         for (win, cb) ∈ callbacks
             set_callbacks!(wm, win, cb)
         end
