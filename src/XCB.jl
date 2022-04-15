@@ -32,6 +32,7 @@ import WindowAbstractions: set_title,
                            get_window,
                            get_window_symbol,
                            callbacks,
+                           current_screen,
 
                            MouseEvent,
                            MouseState,

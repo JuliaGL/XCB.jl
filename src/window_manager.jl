@@ -14,7 +14,18 @@ mutable struct XWindowManager <: AbstractWindowManager
 end
 
 XWindowManager(conn::Connection, windows::AbstractDict) = XWindowManager(conn, windows, Keymap(conn), Dict())
-XWindowManager(conn::Connection, windows::Vector{XCBWindow}) = XWindowManager(conn, Dict(win.id => win for win in windows))
+XWindowManager(conn::Connection = Connection(), windows::Vector{XCBWindow} = XCBWindow[]) = XWindowManager(conn, Dict(win.id => win for win in windows))
+
+current_screen(wm::XWindowManager) = current_screen(wm.conn)
+
+function XCBWindow(wm::XWindowManager, title::AbstractString = "Window $(1 + length(wm.windows))"; screen = current_screen(wm), kwargs...)
+    win = XCBWindow(wm.conn, screen; window_title = title, kwargs...)
+    wm.windows[win.id] = win
+    win
+end
+
+Base.close(wm::XWindowManager, exc::CloseWindow) = wm.callbacks[win].on_close(exc)
+Base.close(wm::XWindowManager, win::XCBWindow) = close(wm, CloseWindow(win))
 
 function set_callbacks!(wm::XWindowManager, win::XCBWindow, callbacks::WindowCallbacks)
     wm.callbacks[win] = callbacks
@@ -44,7 +55,7 @@ get_window(wm::XWindowManager, event::xcb_xkb_state_notify_event_t) = nothing
 get_window(wm::XWindowManager, event::xcb_keymap_notify_event_t) = nothing
 get_window(wm::XWindowManager, event) = get_window(wm, window_id(event))
 
-callbacks(wm::XWindowManager, win::XCBWindow) = get(wm.callbacks, win, WindowCallbacks())
+callbacks(wm::XWindowManager, win::XCBWindow) = get(WindowCallbacks, wm.callbacks, win)
 
 """
 Extract a keycode from an key event.

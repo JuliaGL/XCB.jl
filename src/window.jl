@@ -65,7 +65,7 @@ function set_attributes(win::XCBWindow, attributes, values)
     values = values[sortperm(attributes)]
     list = zeros(UInt32, 32)
     setindex!.(Ref(list), values, 1:length(values))
-    @flush @check xcb_change_window_attributes(win.conn, win.id, reduce(|, attributes), list)
+    @flush @check xcb_change_window_attributes(win.conn, win.id, reduce(|, attributes; init = zero(UInt32)), list)
 end
 
 function delete_request(conn, win_id)
