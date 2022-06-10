@@ -80,6 +80,7 @@ function test()
     else
         run(wm)
     end
+    nothing
 end
 
 @testset "XCB.jl" begin
