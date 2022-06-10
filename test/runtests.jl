@@ -1,6 +1,5 @@
 using XCB
 using Test
-using UnPack
 
 function on_button_pressed(details::EventDetails)
     x, y = details.location
@@ -12,15 +11,15 @@ function on_button_pressed(details::EventDetails)
 end
 
 function on_key_pressed(wm::XWindowManager, details::EventDetails)
-    @unpack win, data = details
+    (; win, data) = details
     send = XCB.send(wm, win)
     km = wm.keymap
     @info keystroke_info(km, details)
-    @unpack key_name, key, input, modifiers = data
+    (; key_name, key, input, modifiers) = data
     kc = KeyCombination(key, modifiers)
     set_title(win, "Random title $(rand())")
     if kc ∈ [key"q", key"ctrl+q", key"f4"]
-        throw(CloseWindow(win, "Received closing request from user input"))
+        CloseWindow(win, "Received closing request from user input")
     elseif kc == key"s"
         curr_extent = XCB.extent(win)
         XCB.set_extent(win, curr_extent .+ 1)
@@ -66,7 +65,7 @@ function test()
 
     if is_xvfb
         @info "- Running window asynchronously"
-        task = run(wm, Asynchronous(); warn_unknown=true)
+        task = @async run(wm)
         @info "- Sending fake inputs"
         send(MouseEvent(ButtonLeft(), MouseState(), ButtonPressed()))
         send(MouseEvent(ButtonLeft(), MouseState(), ButtonReleased()))
@@ -77,9 +76,12 @@ function test()
         send(key_event_from_name(wm.keymap, :AC04, KeyModifierState(), KeyPressed()))
         @info "- Waiting for window to close"
         wait(task)
+        @test !istaskfailed(task)
     else
-        run(wm, Synchronous(); warn_unknown=true, poll=false)
+        run(wm)
     end
 end
 
-test()
+@testset "XCB.jl" begin
+    @test isnothing(test())
+end;

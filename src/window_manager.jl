@@ -33,16 +33,15 @@ function set_callbacks!(wm::XWindowManager, win::XCBWindow, callbacks::WindowCal
 end
 
 function poll_for_event(wm::XWindowManager)
-    while true
-        event = xcb_poll_for_event(wm.conn)
-        event ≠ C_NULL && return event
-        yield()
-    end
+    event = xcb_poll_for_event(wm.conn)
+    event == C_NULL && return nothing
+    unsafe_load_event(event)
 end
 
 function wait_for_event(wm::XWindowManager)
     event = xcb_wait_for_event(wm.conn)
-    event == C_NULL ? nothing : event
+    event == C_NULL && return nothing
+    unsafe_load_event(event)
 end
 
 function terminate_window!(wm::XWindowManager, win::XCBWindow)
@@ -50,7 +49,7 @@ function terminate_window!(wm::XWindowManager, win::XCBWindow)
     finalize(win)
 end
 
-get_window(wm::XWindowManager, id::Integer) = wm.windows[id]
+get_window(wm::XWindowManager, id::Integer) = get(wm.windows, id, nothing)
 get_window(wm::XWindowManager, event::xcb_xkb_state_notify_event_t) = nothing
 get_window(wm::XWindowManager, event::xcb_keymap_notify_event_t) = nothing
 get_window(wm::XWindowManager, event) = get_window(wm, window_id(event))
