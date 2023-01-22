@@ -101,7 +101,16 @@ function keystroke_info(km::Keymap, event_details::EventDetails)
     "Key \e[31m$key_name\e[m (code \e[33m$keycode\e[m): input \"\e[36m$input\e[m\" from symbol \e[36m$key\e[m"
 end
 
-Base.Char(km::Keymap, keycode::Integer) = Char(xkb_state_key_get_utf32(km.state, keycode))
+function Base.Char(km::Keymap, keycode::Integer)
+    codepoints = zeros(UInt8, 5) # reserve 4 bytes + 1 NUL byte
+    size = xkb_state_key_get_utf8(km.state, keycode, C_NULL, 0)
+    @assert size ≤ 4 "More than 4 bytes appear to be required to represent the character from keycode $keycode in UTF-8; `Char`s can only hold 4 bytes of data, which suggests an error or unexpected behavior from XKB or the wrapping logic."
+    GC.@preserve codepoints begin
+        ptr = pointer(codepoints)
+        xkb_state_key_get_utf8(km.state, keycode, ptr, 5)
+        Char(reinterpret(UInt32, @view codepoints[1:4])[])
+    end
+end
 
 """
 Generate a `KeySymbol` from a keycode.

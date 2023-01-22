@@ -39,7 +39,7 @@ end
 
 r = Ref(XCB.xcb_rectangle_t(20, 20, 60, 60))
 
-const is_xvfb = ENV["DISPLAY"] == ":99"
+is_xvfb = ENV["DISPLAY"] == ":99"
 
 function test()
     conn = Connection()
