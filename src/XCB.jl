@@ -16,9 +16,10 @@ using DocStringExtensions
     $(TYPEDFIELDS)
     """
 
-using UnPack
 using Reexport
 @reexport using WindowAbstractions
+@reexport using XKeyboard
+import XKeyboard: Keymap
 import WindowAbstractions: set_title,
                            set_icon_title,
                            set_extent,
@@ -45,12 +46,8 @@ import WindowAbstractions: set_title,
                            EventDetails,
                            KeySymbol
 
-include(joinpath(@__DIR__, "..", "gen", "Libxcb.jl"))
-include(joinpath(@__DIR__, "..", "gen", "Libxkb.jl"))
-
-const xcb = Libxcb
-using .Libxcb
-using .Libxkb
+include("LibXCB.jl")
+@reexport using .LibXCB
 
 include("exceptions.jl")
 include("connection.jl")
@@ -77,12 +74,6 @@ export xcb,
        event_details_xkb,
        @check,
        @flush,
-       keystroke_info,
-       keycode,
-       key_name,
-       keysym_string,
-       key_symbol_from_keysym_string,
-       key_event_from_name,
        unsafe_load_event,
        send_event,
        event_xcb,

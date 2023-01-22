@@ -5,7 +5,7 @@ event_type(::Val{XCB_MOTION_NOTIFY}) = xcb_motion_notify_event_t
 event_type(::Val{XCB_EXPOSE}) = xcb_expose_event_t
 event_type(::Val{XCB_CLIENT_MESSAGE}) = xcb_client_message_event_t
 event_type(::Val{XCB_CONFIGURE_NOTIFY}) = xcb_configure_notify_event_t
-event_type(::Val{85}) = xcb.xcb_xkb_state_notify_event_t # very hacky, but response type 85 is emitted instead of XCB_XKB_STATE_NOTIFY...
+event_type(::Val{85}) = xcb_xkb_state_notify_event_t # very hacky, but response type 85 is emitted instead of XCB_XKB_STATE_NOTIFY...
 event_type(::Val{XCB_KEYMAP_NOTIFY}) = xcb_keymap_notify_event_t
 event_type(rt) = nothing
 
@@ -48,11 +48,8 @@ EventDetails(wm::XWindowManager, win::XCBWindow, data::xcb_button_press_event_t,
     EventDetails(win, MouseEvent(data), data, t)
 
 function EventDetails(wm::XWindowManager, win::XCBWindow, data::xcb_key_press_event_t, t)
-    keycode_symbol = key_name(wm.keymap, data.detail)
-    key_symbol = KeySymbol(wm.keymap, data.detail)
-    input_char = Char(wm.keymap, data.detail)
     event_type = response_type(data) == XCB_KEY_PRESS ? KeyPressed() : KeyReleased()
-    EventDetails(win, KeyEvent(keycode_symbol, key_symbol, input_char, KeyModifierState(data), event_type), data, t)
+    EventDetails(win, KeyEvent(wm.keymap, PhysicalKey(data.detail), KeyModifierState(data), event_type), data, t)
 end
 
 EventDetails(wm::XWindowManager, win::XCBWindow, data::xcb_enter_notify_event_t, t) =

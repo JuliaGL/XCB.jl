@@ -4,7 +4,7 @@ Structures which contain a handle (opaque pointer) as primary data. Those struct
 """
 abstract type Handle end
 
-Base.unsafe_convert(::Type{<: Ptr}, handle::Handle) = handle.h
+Base.unsafe_convert(T::Type{<:Ptr}, handle::Handle) = T(handle.h)
 
 """
 Connection to the X server.
@@ -13,7 +13,7 @@ mutable struct Connection <: Handle
     """
     Opaque handle to the connection, used for API calls.
     """
-    h
+    h::Ptr{xcb_connection_t}
     function Connection(h)
         conn = new(h)
         Base.finalizer(xcb_disconnect, conn)
@@ -28,7 +28,7 @@ struct Setup <: Handle
     """
     Handle to the setup, used for API calls.
     """
-    h
+    h::Ptr{xcb_setup_t}
     """
     Setup value, obtained when dereferencing its handle.
     """

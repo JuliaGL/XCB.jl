@@ -44,7 +44,7 @@ detail_xcb(wm::XWindowManager, e::PointerEntersWindowEvent) = XCB_ENTER_NOTIFY
 detail_xcb(wm::XWindowManager, e::PointerLeavesWindowEvent) = XCB_LEAVE_NOTIFY
 detail_xcb(wm::XWindowManager, e::EventData) = 0
 detail_xcb(wm::XWindowManager, e::EventDetails) = detail_xcb(wm, e.data)
-detail_xcb(wm::XWindowManager, e::EventDetails{<:KeyEvent}) = keycode(wm, e)
+detail_xcb(wm::XWindowManager, e::EventDetails{<:KeyEvent}) = PhysicalKey(wm.keymap, e.data.key_name).code
 
 event_xcb(wm::XWindowManager, e::EventDetails) = event_type_xcb(action(e))(
     response_type_xcb(action(e)),
@@ -92,7 +92,7 @@ send_event(wm::XWindowManager, e::EventDetails) = send_event(e.win, event_xcb(wm
 function send_event(win::XCBWindow, event)
     ref = Ref(event)
     GC.@preserve ref begin
-        event_ptr = Base.reinterpret(Cstring, Base.unsafe_convert(Ptr{typeof(event)}, ref))
+        event_ptr = Ptr{Cchar}(Base.unsafe_convert(Ptr{typeof(event)}, ref))
         @flush @check :error xcb_send_event(win.conn, false, win.id, 0, event_ptr)
     end
 end

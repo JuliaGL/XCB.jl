@@ -1,0 +1,7 @@
+[deps]
+Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
+Xorg_libxcb_jll = "c7cfdc94-dc32-55de-ac96-5a1b8d977c5b"
+Xorg_xcb_util_jll = "2def613f-5ad1-5310-b15b-b15d46f528f5"
+
+[compat]
+Clang = "0.17"

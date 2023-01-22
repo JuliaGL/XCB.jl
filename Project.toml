@@ -3,25 +3,21 @@ uuid = "16167f82-ea26-5cba-b1de-ed6fd5e30a10"
 version = "0.5.0"
 
 [deps]
-CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+BitMasks = "a3e06817-fd65-4797-8291-16f435bc2529"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
-UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 WindowAbstractions = "e18202ca-4a7d-4de8-b056-fa6bbd7de157"
+XKeyboard = "0c8a7d74-93ea-4f23-9ed1-b26578bfdfe6"
 Xorg_libxcb_jll = "c7cfdc94-dc32-55de-ac96-5a1b8d977c5b"
 Xorg_xcb_util_jll = "2def613f-5ad1-5310-b15b-b15d46f528f5"
-xkbcommon_jll = "d8fb68d0-12a3-5cfd-a85a-d49703b185fd"
 
 [compat]
-CEnum = "0.4"
 DocStringExtensions = "0.8"
 Reexport = "1"
-UnPack = "1"
 WindowAbstractions = "0.5"
 Xorg_libxcb_jll = "1.13"
 Xorg_xcb_util_jll = "0.4"
 julia = "1.7"
-xkbcommon_jll = "0.9"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

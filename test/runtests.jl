@@ -14,7 +14,8 @@ function on_key_pressed(wm::XWindowManager, details::EventDetails)
     (; win, data) = details
     send = XCB.send(wm, win)
     km = wm.keymap
-    @info keystroke_info(km, details)
+    print_key_info(stdout, km, data)
+    println()
     (; key_name, key, input, modifiers) = data
     kc = KeyCombination(key, modifiers)
     set_title(win, "Random title $(rand())")
@@ -24,12 +25,14 @@ function on_key_pressed(wm::XWindowManager, details::EventDetails)
         curr_extent = XCB.extent(win)
         XCB.set_extent(win, curr_extent .+ 1)
     elseif kc == key"i"
-        open("keymap.txt", "w") do io
+        dest = abspath("keymap.txt")
+        println("Dumping keymap info to $dest")
+        open(dest, "w") do io
             write(io, String(km))
         end
     elseif kc == key"f"
         @info "Faking input: sending key AD01 to quit (requires an english keyboard layout to be translated to the relevant symbol 'q')"
-        send(key_event_from_name(wm.keymap, :AD01, KeyModifierState(), KeyPressed()))
+        send(KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD01), KeyModifierState(), KeyPressed()))
     else
         gc = win.gc
         set_attributes(gc, [XCB.XCB_GC_FOREGROUND], [rand(1:16_777_215)])
@@ -72,8 +75,8 @@ function test()
         send(PointerEntersWindowEvent())
         send(PointerMovesEvent(MouseState(), KeyModifierState()))
         send(PointerLeavesWindowEvent())
-        send(key_event_from_name(wm.keymap, :AC04, KeyModifierState(), KeyReleased()))
-        send(key_event_from_name(wm.keymap, :AC04, KeyModifierState(), KeyPressed()))
+        send(KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04), KeyModifierState(), KeyReleased()))
+        send(KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04), KeyModifierState(), KeyPressed()))
         @info "- Waiting for window to close"
         wait(task)
         @test !istaskfailed(task)
