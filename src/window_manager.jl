@@ -18,6 +18,8 @@ XWindowManager(conn::Connection = Connection(), windows::Vector{XCBWindow} = XCB
 
 current_screen(wm::XWindowManager) = current_screen(wm.conn)
 
+windows(wm::XWindowManager) = values(wm.windows)
+
 function XCBWindow(wm::XWindowManager, title::AbstractString = "Window $(1 + length(wm.windows))"; screen = current_screen(wm), kwargs...)
     win = XCBWindow(wm.conn, screen; window_title = title, kwargs...)
     wm.windows[win.id] = win
