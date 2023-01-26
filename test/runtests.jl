@@ -1,88 +1,103 @@
 using XCB
 using Test
 
-function on_button_pressed(details::EventDetails)
-    x, y = details.location
-    click = details.data.button
-    state = details.data.state
-    buttons_pressed = pressed_buttons(state)
-    printed_state = isempty(buttons_pressed) ? "" : "with $(join(string.(buttons_pressed), ", ")) button$(length(buttons_pressed) > 1 ? "s" : "") held"
-    @info "$click at $x, $y $printed_state"
+function main(wm, queue)
+    for event in queue
+        if event.type == WINDOW_CLOSED
+            close(wm, event.win)
+        elseif event.type == KEY_PRESSED
+            print_key_info(stdout, wm.keymap, event.key_event)
+            println()
+            set_title(event.win, "Random title $(rand())")
+            (; key, modifiers) = event.key_event
+            kc = KeyCombination(key, modifiers)
+            on_key_combination(wm, event, kc)
+        elseif event.type == KEY_RELEASED
+            @info "Released $(KeyCombination(event.key_event.key, event.key_event.modifiers))"
+        elseif is_button_event(event)
+            print_button(event)
+        elseif event.type == WINDOW_EXPOSED
+            @info "Window exposed"
+        elseif event.type == WINDOW_RESIZED
+            @info "Window resized to $(event.new_dimensions)"
+        elseif event.type == POINTER_ENTERED
+            @info "Entering window at $(event.location)"
+        elseif event.type == POINTER_MOVED
+            print("Moving pointer at $(event.location)", ' '^50, '\r')
+        elseif event.type == POINTER_EXITED
+            @info "Leaving window at $(event.location)"
+        end
+        isempty(windows(wm)) && break
+    end
 end
 
-function on_key_pressed(wm::XWindowManager, details::EventDetails)
-    (; win, data) = details
-    send = XCB.send(wm, win)
-    km = wm.keymap
-    print_key_info(stdout, km, data)
-    println()
-    (; key_name, key, input, modifiers) = data
-    kc = KeyCombination(key, modifiers)
-    set_title(win, "Random title $(rand())")
-    if kc ∈ [key"q", key"ctrl+q", key"f4"]
-        CloseWindow(win, "Received closing request from user input")
-    elseif kc == key"s"
-        curr_extent = XCB.extent(win)
-        XCB.set_extent(win, curr_extent .+ 1)
-    elseif kc == key"i"
+function print_button(event::Event)
+    (; button, state) = event.mouse_event
+    x, y = event.location
+    printed_state = iszero(state) ? "" : "with $state button(s) held"
+    println("$(event.type): $button at $x, $y $printed_state")
+end
+
+
+function on_key_combination(wm, event, kc)
+    (; win) = event
+    kc ∈ [key"q", key"ctrl+q", key"f4"] && return close(wm, win)
+    kc === key"s" && return resize(win, extent(win) .+ 1)
+    if kc == key"i"
         dest = abspath("keymap.txt")
         println("Dumping keymap info to $dest")
-        open(dest, "w") do io
-            write(io, String(km))
+        return open(dest, "w") do io
+            write(io, String(wm.keymap))
         end
-    elseif kc == key"f"
-        @info "Faking input: sending key AD01 to quit (requires an english keyboard layout to be translated to the relevant symbol 'q')"
-        send(KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD01), KeyModifierState(), KeyPressed()))
-    else
-        gc = win.gc
-        set_attributes(gc, [XCB.XCB_GC_FOREGROUND], [rand(1:16_777_215)])
-        XCB.@flush XCB.xcb_poly_fill_rectangle(win.conn, win.id, gc.id, UInt32(1), r)
     end
+    if kc == key"f"
+        send = XCB.send(wm, win)
+        @info "Faking input: sending key AD01 to quit (requires an english keyboard layout to be translated to the relevant symbol 'q')"
+        return send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD01), KeyModifierState()))
+    end
+
+    (; gc) = win
+    set_attributes(gc, [XCB.XCB_GC_FOREGROUND], [rand(1:16_777_215)])
+    XCB.@flush XCB.xcb_poly_fill_rectangle(win.conn, win.id, gc.id, UInt32(1), rectangle)
 end
 
-r = Ref(XCB.xcb_rectangle_t(20, 20, 60, 60))
-
-is_xvfb = ENV["DISPLAY"] == ":99"
+rectangle = Ref(XCB.xcb_rectangle_t(20, 20, 60, 60))
+interactive = ENV["DISPLAY"] ≠ ":99"
 
 function test()
-    conn = Connection()
-    screen = current_screen(conn)
-    win = XCBWindow(conn, screen; x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
+    wm = XWindowManager()
+    queue = EventQueue(wm)
+    screen = current_screen(wm)
+    win = XCBWindow(wm; screen, x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
     ctx = GraphicsContext(win, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
     attach_graphics_context!(win, ctx)
-    wm = XWindowManager(conn, [win])
+    send = send_event(wm, win)
 
-    set_callbacks!(wm, win, WindowCallbacks(;
-        on_resize = x -> @info("Window size changed: $(x.data.new_dimensions)"),
-        on_mouse_button_pressed = on_button_pressed,
-        on_mouse_button_released = x -> @info("Released mouse button $(x.data.button)"),
-        on_key_pressed = x -> on_key_pressed(wm, x),
-        on_key_released = x -> @info("Released $(KeyCombination(x.data.key, x.data.modifiers))"),
-        on_pointer_enter = x -> @info("Entering window at $(x.location)"),
-        on_pointer_leave = x -> @info("Leaving window at $(x.location)"),
-        on_pointer_move = x -> @info("Moving pointer at $(x.location)"),
-        on_expose = x -> @info("Window exposed")
-    ))
-
-    send = XCB.send(wm, win)
-
-    if is_xvfb
-        @info "- Running window asynchronously"
-        task = @async run(wm)
-        @info "- Sending fake inputs"
-        send(MouseEvent(ButtonLeft(), MouseState(), ButtonPressed()))
-        send(MouseEvent(ButtonLeft(), MouseState(), ButtonReleased()))
-        send(PointerEntersWindowEvent())
-        send(PointerMovesEvent(MouseState(), KeyModifierState()))
-        send(PointerLeavesWindowEvent())
-        send(KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04), KeyModifierState(), KeyReleased()))
-        send(KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04), KeyModifierState(), KeyPressed()))
-        @info "- Waiting for window to close"
+    if interactive
+        main(wm, queue)
+    else
+        @info "Running window asynchronously"
+        task = @async main(wm, queue)
+        @info "Sending fake inputs"
+        send(BUTTON_PRESSED, MouseEvent(BUTTON_LEFT, BUTTON_NONE))
+        send(BUTTON_RELEASED, MouseEvent(BUTTON_LEFT, BUTTON_LEFT))
+        send(POINTER_ENTERED)
+        send(POINTER_MOVED, PointerState(BUTTON_NONE, KeyModifierState()))
+        send(POINTER_EXITED)
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD08), KeyModifierState()))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD08), KeyModifierState()))
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC09), KeyModifierState()))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC09), KeyModifierState()))
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02), KeyModifierState()))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02), KeyModifierState()))
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04), KeyModifierState()))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04), KeyModifierState()))
+        @info "Waiting for window to close"
         wait(task)
         @test !istaskfailed(task)
-    else
-        run(wm)
+        @test isfile("keymap.txt")
     end
+    isfile("keymap.txt") && rm("keymap.txt")
     nothing
 end
 

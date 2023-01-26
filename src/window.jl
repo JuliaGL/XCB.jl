@@ -31,9 +31,8 @@ function XCBWindow(conn, parent_id, visual_id; depth=XCB_COPY_FROM_PARENT, x=0, 
         C_NULL,
     )
     win = XCBWindow(conn, win_id, parent_id, visual_id, delete_request(conn, win_id), nothing)
-    Base.finalizer(x -> @check(:error, xcb_destroy_window(x.conn, x.id)), win)
 
-    set_attributes(win, [XCB_CW_EVENT_MASK], [base_event_mask])
+    set_event_mask(win, keys(event_type_bits))
     set_attributes(win, attributes, values)
 
     set_title(win, window_title)
@@ -42,7 +41,7 @@ function XCBWindow(conn, parent_id, visual_id; depth=XCB_COPY_FROM_PARENT, x=0, 
     set_icon_title(win, icon_title)
 
     map && map_window(win)
-    win
+    Base.finalizer(x -> @check(:error, xcb_destroy_window(x.conn, x.id)), win)
 end
 
 """
@@ -84,7 +83,7 @@ function extent(win::XCBWindow)
     getproperty.(Ref(unsafe_load(geometry_reply)), (:width, :height))
 end
 
-function set_extent(win::XCBWindow, extent)
+function resize(win::XCBWindow, extent)
     @flush @check xcb_configure_window(win.conn, win.id, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, UInt32[extent...])
 end
 
@@ -105,23 +104,23 @@ end
 
 const base_event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_KEYMAP_STATE | XCB_EVENT_MASK_STRUCTURE_NOTIFY
 
-const event_bits_mapping = Dict(
-    :on_key_pressed => XCB_EVENT_MASK_KEY_PRESS,
-    :on_key_released => XCB_EVENT_MASK_KEY_RELEASE,
-    :on_mouse_button_pressed => XCB_EVENT_MASK_BUTTON_PRESS,
-    :on_mouse_button_released => XCB_EVENT_MASK_BUTTON_RELEASE,
-    :on_pointer_enter => XCB_EVENT_MASK_ENTER_WINDOW,
-    :on_pointer_move => XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
-    :on_pointer_leave => XCB_EVENT_MASK_LEAVE_WINDOW,
-    :on_expose => XCB_EVENT_MASK_EXPOSURE,
-    :on_resize => XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+const event_type_bits = Dict(
+    KEY_PRESSED => XCB_EVENT_MASK_KEY_PRESS,
+    KEY_RELEASED => XCB_EVENT_MASK_KEY_RELEASE,
+    BUTTON_PRESSED => XCB_EVENT_MASK_BUTTON_PRESS,
+    BUTTON_RELEASED => XCB_EVENT_MASK_BUTTON_RELEASE,
+    POINTER_ENTERED => XCB_EVENT_MASK_ENTER_WINDOW,
+    POINTER_MOVED => XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_BUTTON_PRESS,
+    POINTER_EXITED => XCB_EVENT_MASK_LEAVE_WINDOW,
+    WINDOW_EXPOSED => XCB_EVENT_MASK_EXPOSURE,
+    WINDOW_RESIZED => XCB_EVENT_MASK_STRUCTURE_NOTIFY,
 )
 
-event_bit(prop::Symbol, callbacks::WindowCallbacks) = !isnothing(getproperty(callbacks, prop)) * UInt32(event_bits_mapping[prop])
-event_bits(callbacks::WindowCallbacks) = reduce(|, (event_bit(prop, callbacks) for prop ∈ keys(event_bits_mapping)))
+event_bit(event_type::EventType) = event_type_bits[event_type]
+event_bits(event_types) = reduce((x, y) -> |(x, event_bit(y)), event_types; init = zero(xcb_event_mask_t))
 
-function set_event_mask(win::XCBWindow, callbacks::WindowCallbacks)
-    mask = base_event_mask | event_bits(callbacks)
+function set_event_mask(win::XCBWindow, event_types)
+    mask = base_event_mask | event_bits(event_types)
     set_attributes(win, [XCB_CW_EVENT_MASK], [mask])
 end
 

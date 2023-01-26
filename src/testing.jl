@@ -1,93 +1,66 @@
 """
 Translate mouse or modifier state into the corresponding XCB value.
 """
-function state_xcb end
+function state_xcb(event::Event)
+    is_key_event(event) && return state_xcb(event.key_event.modifiers)
+    is_button_event(event) && return state_xcb(event.mouse_event.state)
+    0
+end
 
-state_xcb(s::MouseState) = .&(UInt[s.left, s.middle, s.right, s.scroll_up, s.scroll_down, s.any] .* UInt[XCB_BUTTON_MASK_1, XCB_BUTTON_MASK_2, XCB_BUTTON_MASK_3, XCB_BUTTON_MASK_4, XCB_BUTTON_MASK_5, XCB_BUTTON_MASK_ANY]...)
-state_xcb(s::KeyModifierState) = sum(2 .^ (0:3) .* Int[s.shift, s.ctrl, s.alt, s.super])
-state_xcb(::Any) = 0
-
-state_xcb(e::MouseEvent) = state_xcb(e.state)
-state_xcb(e::KeyEvent) = state_xcb(e.modifiers)
+state_xcb(s::MouseButton) = UInt(s)
+state_xcb(s::KeyModifierState) = sum(Int[XCB_MOD_MASK_SHIFT, XCB_MOD_MASK_CONTROL, XCB_MOD_MASK_1, XCB_MOD_MASK_4] .* Int[s.shift, s.ctrl, s.alt, s.super])
 
 """
 Translate an action into its corresponding XCB value.
 """
-function response_type_xcb end
+function response_type_xcb(event::Event)
+    event.type == KEY_PRESSED && return XCB_KEY_PRESS
+    event.type == KEY_RELEASED && return XCB_KEY_RELEASE
+    event.type == BUTTON_PRESSED && return XCB_BUTTON_PRESS
+    event.type == BUTTON_RELEASED && return XCB_BUTTON_RELEASE
+    event.type == POINTER_ENTERED && return XCB_ENTER_NOTIFY
+    event.type == POINTER_MOVED && return XCB_MOTION_NOTIFY
+    event.type == POINTER_EXITED && return XCB_LEAVE_NOTIFY
+    event.type == WINDOW_RESIZED && return XCB_CONFIGURE_NOTIFY
+    event.type == WINDOW_EXPOSED && return XCB_EXPOSE
+    error("No response type corresponding to $(event.type)")
+end
 
-response_type_xcb(::Type{ButtonPressed}) = XCB_BUTTON_PRESS
-response_type_xcb(::Type{ButtonReleased}) = XCB_BUTTON_RELEASE
-response_type_xcb(::Type{KeyPressed}) = XCB_KEY_PRESS
-response_type_xcb(::Type{KeyReleased}) = XCB_KEY_RELEASE
-response_type_xcb(::Type{PointerMoves}) = XCB_MOTION_NOTIFY
-response_type_xcb(::Type{PointerEntersWindow}) = XCB_ENTER_NOTIFY
-response_type_xcb(::Type{PointerLeavesWindow}) = XCB_LEAVE_NOTIFY
-response_type_xcb(::Type{Expose}) = XCB_EXPOSE
-response_type_xcb(::Type{Resize}) = XCB_CONFIGURE_NOTIFY
+function event_type_xcb(event::Event)
+    is_key_event(event) && return xcb_key_press_event_t
+    is_button_event(event) && return xcb_button_press_event_t
+    event.type == POINTER_MOVED && return xcb_motion_notify_event_t
+    is_pointer_event(event) && return xcb_enter_notify_event_t
+    event.type == WINDOW_RESIZED && return xcb_configure_notify_event_t
+    event.type == WINDOW_EXPOSED && return xcb_expose_event_t
+    error("No event type corresponding to $(event.type)")
+end
 
-event_type_xcb(::Type{<:Union{ButtonPressed, ButtonReleased}}) = xcb_button_press_event_t
-event_type_xcb(::Type{<:Union{KeyPressed, KeyReleased}}) = xcb_key_press_event_t
-event_type_xcb(::Type{PointerMoves}) = xcb_motion_notify_event_t
-event_type_xcb(::Type{<:Union{PointerEntersWindow, PointerLeavesWindow}}) = xcb_enter_notify_event_t
-event_type_xcb(::Type{ResizeEvent}) = xcb_configure_notify_event_t
-event_type_xcb(::Type{ExposeEvent}) = xcb_expose_event_t
+function button_xcb(button::MouseButton)
+  button == BUTTON_LEFT && return XCB_BUTTON_INDEX_1
+  button == BUTTON_MIDDLE && return XCB_BUTTON_INDEX_2
+  button == BUTTON_RIGHT && return XCB_BUTTON_INDEX_3
+  button == BUTTON_SCROLL_UP && return XCB_BUTTON_INDEX_4
+  button == BUTTON_SCROLL_DOWN && return XCB_BUTTON_INDEX_5
+end
 
-button_xcb(::ButtonLeft) = XCB_BUTTON_INDEX_1
-button_xcb(::ButtonMiddle) = XCB_BUTTON_INDEX_2
-button_xcb(::ButtonRight) = XCB_BUTTON_INDEX_3
-button_xcb(::ButtonScrollUp) = XCB_BUTTON_INDEX_4
-button_xcb(::ButtonScrollDown) = XCB_BUTTON_INDEX_5
-
-detail_xcb(wm::XWindowManager, e::MouseEvent) = button_xcb(e.button)
-detail_xcb(wm::XWindowManager, e::PointerMovesEvent) = XCB_MOTION_NORMAL
-detail_xcb(wm::XWindowManager, e::PointerEntersWindowEvent) = XCB_ENTER_NOTIFY
-detail_xcb(wm::XWindowManager, e::PointerLeavesWindowEvent) = XCB_LEAVE_NOTIFY
-detail_xcb(wm::XWindowManager, e::EventData) = 0
-detail_xcb(wm::XWindowManager, e::EventDetails) = detail_xcb(wm, e.data)
-detail_xcb(wm::XWindowManager, e::EventDetails{<:KeyEvent}) = PhysicalKey(wm.keymap, e.data.key_name).code
-
-event_xcb(wm::XWindowManager, e::EventDetails) = event_type_xcb(action(e))(
-    response_type_xcb(action(e)),
-    detail_xcb(wm, e),
-    0,
-    e.time,
-    e.win.parent_id,
-    e.win.id,
-    0,
-    0,
-    0,
-    e.location...,
-    state_xcb(e.data),
-    true,
-    false
-)
-
-event_xcb(wm::XWindowManager, e::EventDetails{<:ExposeEvent}) = event_type_xcb(action(e))(
-    response_type_xcb(action(e)),
-    0,
-    0,
-    e.win.id,
-    e.location...,
-    extent(e.win)...,
-    0,
+function detail_xcb(wm::XWindowManager, event::Event)
+    is_button_event(event) && return xcb_button_t(iszero(event.mouse_event.button) ? 0 : log2(Int(event.mouse_event.button)))
+    is_key_event(event) && return PhysicalKey(wm.keymap, event.key_event.key_name).code
+    event.type == POINTER_MOVED && return UInt8(XCB_MOTION_NORMAL)
+    event.type == POINTER_ENTERED && return XCB_ENTER_NOTIFY
+    event.type == POINTER_EXITED && return XCB_LEAVE_NOTIFY
     0
-)
+end
 
-event_xcb(wm::XWindowManager, e::EventDetails{<:ResizeEvent}) = event_type_xcb(action(e))(
-    response_type_xcb(action(e)),
-    0,
-    0,
-    e.win.id,
-    e.win.id,
-    0,
-    e.location...,
-    extent(e.win)...,
-    0,
-    0,
-    0
-)
+function event_xcb(wm::XWindowManager, e::Event)
+    T = event_type_xcb(e)
+    T === xcb_expose_event_t && return T(response_type_xcb(e), 0, 0, e.win.id, e.location..., extent(e.win)..., 0, 0)
+    T === xcb_configure_notify_event_t && return T(response_type_xcb(e), 0, 0, e.win.id, e.win.id, 0, e.location..., extent(e.win)..., 0, 0, 0)
+    T(response_type_xcb(e), detail_xcb(wm, e), 0, e.time, e.win.parent_id, e.win.id, 0, 0, 0, e.location..., state_xcb(e), true, false)
+end
 
-send_event(wm::XWindowManager, e::EventDetails) = send_event(e.win, event_xcb(wm, e))
+send_event(wm::XWindowManager, e::Event) = send_event(e.win, event_xcb(wm, e))
 
 function send_event(win::XCBWindow, event)
     ref = Ref(event)
@@ -99,6 +72,8 @@ end
 
 hex(x) = "0x$(string(x, base=16))"
 
-function send(wm::XWindowManager, win::XCBWindow; location=(0, 0))
-    (event; location=location) -> send_event(wm, EventDetails(event, location, floor(time()), win))
+function send_event(wm::XWindowManager, win::XCBWindow, event_type::EventType, data = nothing; location = (0.0, 0.0))
+    send_event(wm, Event(event_type, data, location, floor(time()), win))
 end
+
+send_event(wm::XWindowManager, win::XCBWindow) = (event_type, data = nothing; location = (0.0, 0.0)) -> send_event(wm, win, event_type, data; location)

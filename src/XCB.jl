@@ -22,30 +22,24 @@ using Reexport
 import XKeyboard: Keymap
 import WindowAbstractions: set_title,
                            set_icon_title,
-                           set_extent,
+                           resize,
                            extent,
-                           terminate_window!,
-                           map_window,
-                           unmap_window,
-                           wait_for_event,
-                           poll_for_event,
-                           handle_event,
-                           attach_graphics_context!,
+                           poll_for_events!,
+                           window_type,
                            windows,
                            get_window,
-                           get_window_symbol,
-                           callbacks,
+                           map_window,
+                           unmap_window,
                            current_screen,
 
                            MouseEvent,
-                           MouseState,
-                           PointerMovesEvent,
+                           MouseButton,
+                           PointerState,
                            KeyEvent,
                            KeyModifierState,
                            KeyContext,
-                           KeyCombination,
-                           EventDetails,
-                           KeySymbol
+                           Event,
+                           EventQueue
 
 include("LibXCB.jl")
 @reexport using .LibXCB
@@ -54,14 +48,14 @@ include("exceptions.jl")
 include("connection.jl")
 include("graphics.jl")
 include("window.jl")
-include("inputs.jl")
 include("xkb.jl")
 include("window_manager.jl")
+include("inputs.jl")
 include("testing.jl")
 include("events.jl")
 
 
-export xcb,
+export 
        Connection,
        Setup,
        check,
@@ -69,18 +63,11 @@ export xcb,
        current_screen,
        XCBWindow,
        GraphicsContext,
-       set_callbacks!,
+       attach_graphics_context!,
        set_attributes,
        XWindowManager,
-       event_details_xkb,
        @check,
        @flush,
-       unsafe_load_event,
-       send_event,
-       event_xcb,
-       action_xcb,
-       state_xcb,
-       event_type_xcb,
-       button_xcb
+       send_event
 
 end # module
