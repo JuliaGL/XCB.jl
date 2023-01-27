@@ -34,6 +34,10 @@ function handle_event!(queue, ptr::Ptr{xcb_generic_event_t})
         event = unsafe_load(Ptr{xcb_configure_notify_event_t}(ptr))
         win = get_window(wm, event.window)
         enqueue!(queue, wm, win, event)
+    elseif rt in (XCB_FOCUS_IN, XCB_FOCUS_OUT)
+        event = unsafe_load(Ptr{xcb_focus_in_event_t}(ptr))
+        win = get_window(wm, event.event)
+        enqueue!(queue, wm, win, event)
     elseif rt == 85 # very hacky, but response type 85 is emitted instead of XCB_XKB_STATE_NOTIFY...
         event = unsafe_load(Ptr{xcb_xkb_state_notify_event_t}(ptr))
         xkb_state_update_mask(wm.keymap.state, event.baseMods, event.latchedMods, event.lockedMods, event.baseGroup, event.latchedGroup, event.lockedGroup)
@@ -76,6 +80,8 @@ Event(wm::XWindowManager, win::XCBWindow, event::xcb_expose_event_t, t) =
     Event(WINDOW_EXPOSED, coordinates((event.width, event.height), win), location(event, win), t, win)
 Event(wm::XWindowManager, win::XCBWindow, event::xcb_configure_notify_event_t, t) =
     Event(WINDOW_RESIZED, Int64.((event.width, event.height)), location(event, win), t, win)
+Event(wm::XWindowManager, win::XCBWindow, event::xcb_focus_in_event_t, t) =
+    Event(response_type(event) == XCB_FOCUS_IN ? WINDOW_GAINED_FOCUS : WINDOW_LOST_FOCUS, nothing, (0.0, 0.0), t, win)
 
 function is_delete_request(event::xcb_client_message_event_t, win::XCBWindow)
     ed_8 = Int.(event.data.data8)

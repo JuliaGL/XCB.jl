@@ -26,6 +26,10 @@ function main(wm, queue)
             print("Moving pointer at $(event.location)", ' '^50, '\r')
         elseif event.type == POINTER_EXITED
             @info "Leaving window at $(event.location)"
+        elseif event.type == WINDOW_GAINED_FOCUS
+            @info "Window gained focus"
+        elseif event.type == WINDOW_LOST_FOCUS
+            @info "Window lost focus"
         end
         isempty(windows(wm)) && break
     end
