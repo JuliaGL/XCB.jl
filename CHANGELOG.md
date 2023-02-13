@@ -1,5 +1,9 @@
 # Changelog for XCB.jl
 
+## Version `v0.6`
+
+- ![BREAKING][badge-breaking] Adaptation to upstream changes to WindowAbstractions.jl. Check out the related [CHANGELOG](https://github.com/serenity4/WindowAbstractions.jl/blob/master/CHANGELOG.md) to know more about changes which greatly affect the use of XCB.jl.
+
 ## Version `v0.5`
 
 - ![BREAKING][badge-breaking] ![Enhancement][badge-enhancement] `Base.run(::XWindowManager; kwargs...)` now only accepts a single keyword argument `sleep_time`, removing the ability to customize `execute_callback` and removing `poll` such that by default a mix of polling and (optionally) sleeping is done according to `sleep_time` (instead of either polling or calling a blocking C function). `iter_first` and `iter_last` keyword arguments are no longer available, and you should make your own event loop with `poll_event` and `process_event` if you want further customization.

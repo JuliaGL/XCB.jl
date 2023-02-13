@@ -8,7 +8,7 @@ function state_xcb(event::Event)
 end
 
 state_xcb(s::MouseButton) = UInt(s)
-state_xcb(s::KeyModifierState) = sum(Int[XCB_MOD_MASK_SHIFT, XCB_MOD_MASK_CONTROL, XCB_MOD_MASK_1, XCB_MOD_MASK_4] .* Int[s.shift, s.ctrl, s.alt, s.super])
+state_xcb(s::ModifierState) = xcb_mod_mask_t(UInt8(s))
 
 """
 Translate an action into its corresponding XCB value.

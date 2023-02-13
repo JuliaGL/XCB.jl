@@ -13,7 +13,8 @@ function main(wm, queue)
             kc = KeyCombination(key, modifiers)
             on_key_combination(wm, event, kc)
         elseif event.type == KEY_RELEASED
-            @info "Released $(KeyCombination(event.key_event.key, event.key_event.modifiers))"
+            active_modifiers = event.key_event.modifiers & ~event.key_event.consumed_modifiers
+            @info "Released $(event.key_event.key)" * (iszero(active_modifiers) ? "" : " with active modifiers $active_modifiers")
         elseif is_button_event(event)
             print_button(event)
         elseif event.type == WINDOW_EXPOSED
@@ -48,16 +49,16 @@ function on_key_combination(wm, event, kc)
     kc ∈ [key"q", key"ctrl+q", key"f4"] && return close(wm, win)
     kc === key"s" && return resize(win, extent(win) .+ 1)
     if kc == key"i"
-        dest = abspath("keymap.txt")
+        dest = abspath("keymap.c")
         println("Dumping keymap info to $dest")
         return open(dest, "w") do io
             write(io, String(wm.keymap))
         end
     end
     if kc == key"f"
-        send = XCB.send(wm, win)
+        send = send_event(wm, win)
         @info "Faking input: sending key AD01 to quit (requires an english keyboard layout to be translated to the relevant symbol 'q')"
-        return send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD01), KeyModifierState()))
+        return send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD01), NO_MODIFIERS))
     end
 
     (; gc) = win
@@ -86,22 +87,22 @@ function test()
         send(BUTTON_PRESSED, MouseEvent(BUTTON_LEFT, BUTTON_NONE))
         send(BUTTON_RELEASED, MouseEvent(BUTTON_LEFT, BUTTON_LEFT))
         send(POINTER_ENTERED)
-        send(POINTER_MOVED, PointerState(BUTTON_NONE, KeyModifierState()))
+        send(POINTER_MOVED, PointerState(BUTTON_NONE, NO_MODIFIERS))
         send(POINTER_EXITED)
-        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD08), KeyModifierState()))
-        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD08), KeyModifierState()))
-        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC09), KeyModifierState()))
-        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC09), KeyModifierState()))
-        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02), KeyModifierState()))
-        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02), KeyModifierState()))
-        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04), KeyModifierState()))
-        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04), KeyModifierState()))
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD08)))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD08)))
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC09)))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC09)))
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02)))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02)))
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04)))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04)))
         @info "Waiting for window to close"
         wait(task)
         @test !istaskfailed(task)
-        @test isfile("keymap.txt")
+        @test isfile("keymap.c")
     end
-    isfile("keymap.txt") && rm("keymap.txt")
+    isfile("keymap.c") && rm("keymap.c")
     nothing
 end
 
