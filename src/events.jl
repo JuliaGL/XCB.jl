@@ -47,7 +47,6 @@ function handle_event!(queue, ptr::Ptr{xcb_generic_event_t})
     else
         @debug "Unknown event $rt"
     end
-    nothing
 end
 
 location(event::xcb_button_press_event_t) = (event.event_x, event.event_y)
@@ -56,6 +55,7 @@ location(event::xcb_enter_notify_event_t) = (event.event_x, event.event_y)
 location(event::xcb_motion_notify_event_t) = (event.event_x, event.event_y)
 location(event::xcb_expose_event_t) = (event.x, event.y)
 location(event::xcb_configure_notify_event_t) = (event.x, event.y)
+location(::xcb_client_message_event_t) = (0, 0)
 
 location(event, win) = coordinates(location(event), win)
 coordinates(xs, win) = Float64.(xs ./ extent(win))
@@ -91,6 +91,7 @@ end
 
 function poll_for_events!(queue::EventQueue{XWindowManager})
     event = xcb_poll_for_event(queue.wm.conn)
-    event == C_NULL && return
+    event == C_NULL && return false
     handle_event!(queue, event)
+    true
 end

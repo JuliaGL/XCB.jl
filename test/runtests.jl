@@ -1,17 +1,15 @@
 using XCB
 using Test
 
-function main(wm, queue)
-    for event in queue
+function main(wm)
+    for event in EventQueue(wm)
         if event.type == WINDOW_CLOSED
             close(wm, event.win)
         elseif event.type == KEY_PRESSED
             print_key_info(stdout, wm.keymap, event.key_event)
             println()
             set_title(event.win, "Random title $(rand())")
-            (; key, modifiers) = event.key_event
-            kc = KeyCombination(key, modifiers)
-            on_key_combination(wm, event, kc)
+            on_pressed_key(wm, event)
         elseif event.type == KEY_RELEASED
             active_modifiers = event.key_event.modifiers & ~event.key_event.consumed_modifiers
             @info "Released $(event.key_event.key)" * (iszero(active_modifiers) ? "" : " with active modifiers $active_modifiers")
@@ -44,18 +42,18 @@ function print_button(event::Event)
 end
 
 
-function on_key_combination(wm, event, kc)
+function on_pressed_key(wm, event)
     (; win) = event
-    kc ∈ [key"q", key"ctrl+q", key"f4"] && return close(wm, win)
-    kc === key"s" && return resize(win, extent(win) .+ 1)
-    if kc == key"i"
+    any(matches(event), [key"q", key"ctrl+q"]) && return close(wm, win)
+    matches(key"s", event) && return resize(win, extent(win) .+ 1)
+    if matches(key"i", event)
         dest = abspath("keymap.c")
         println("Dumping keymap info to $dest")
         return open(dest, "w") do io
             write(io, String(wm.keymap))
         end
     end
-    if kc == key"f"
+    if matches(key"f", event)
         send = send_event(wm, win)
         @info "Faking input: sending key AD01 to quit (requires an english keyboard layout to be translated to the relevant symbol 'q')"
         return send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD01), NO_MODIFIERS))
@@ -71,7 +69,6 @@ interactive = ENV["DISPLAY"] ≠ ":99"
 
 function test()
     wm = XWindowManager()
-    queue = EventQueue(wm)
     screen = current_screen(wm)
     win = XCBWindow(wm; screen, x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
     ctx = GraphicsContext(win, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
@@ -79,10 +76,10 @@ function test()
     send = send_event(wm, win)
 
     if interactive
-        main(wm, queue)
+        main(wm)
     else
         @info "Running window asynchronously"
-        task = @async main(wm, queue)
+        task = @async main(wm)
         @info "Sending fake inputs"
         send(BUTTON_PRESSED, MouseEvent(BUTTON_LEFT, BUTTON_NONE))
         send(BUTTON_RELEASED, MouseEvent(BUTTON_LEFT, BUTTON_LEFT))
