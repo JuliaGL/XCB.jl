@@ -2,7 +2,7 @@
 
 ## Version `v0.6`
 
-- ![BREAKING][badge-breaking] Adaptation to upstream changes to WindowAbstractions.jl. Check out the related [CHANGELOG](https://github.com/serenity4/WindowAbstractions.jl/blob/master/CHANGELOG.md) to know more about changes which greatly affect the use of XCB.jl.
+- ![BREAKING][badge-breaking] Adaptation to upstream changes to WindowAbstractions.jl. Check out the related [CHANGELOG](https://github.com/serenity4/WindowAbstractions.jl/blob/master/CHANGELOG.md), some of these changes having a significant impact on XCB.jl.
 
 ## Version `v0.5`
 
