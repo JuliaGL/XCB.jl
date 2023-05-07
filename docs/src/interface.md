@@ -2,9 +2,9 @@
 
 ## Events
 
-A large portion of this package is dedicated to handling the events reported by the X server and interfacing them into `EventDetails` instances.
+A large portion of this package is dedicated to handling the events reported by the X server and interfacing them into `Event` instances.
 
-In order to receive events from the server, we need to tell the server which types of event we want to be reported. This is done per-window, at their instantiation, through so-called event masks. In the future, it is intended to check which event we are subscribed to with the window callbacks that are provided to an event loop.
+In order to receive events from the server, we need to tell the X server which types of event we want to be reported. This is done per-window, at their instantiation, through so-called event masks. Currently, all events are included by default; if this proves to be a source of performance issues, this may be revisited in the future.
 
 ### Input events
 
@@ -18,7 +18,7 @@ Although drag actions are technically just of combination of mouse state and poi
 
 #### Key events
 
-X and XCB do not offer much keystroke-related utilities, unless we look at some extensions such as XKB, which was used here for processing key inputs. It allows the storage of keyboard and keymap states, as well as functions to translate keystrokes into characters. The input processing using XKB was inspired from the [XKB tutorial](https://github.com/xkbcommon/libxkbcommon/blob/master/doc/quick-guide.md).
+X and XCB do not offer much keystroke-related utilities, unless we look at some extensions such as XKB, which was used here for processing key inputs. It allows the storage of keyboard and keymap states, as well as functions to translate keystrokes into characters. The input processing is performed using XKB via [XKeyboard.jl](https://github.com/serenity4/XKeyboard.jl).
 
 #### Mouse events
 
