@@ -13,7 +13,7 @@ Xorg_xcb_util_jll = "2def613f-5ad1-5310-b15b-b15d46f528f5"
 
 [compat]
 BitMasks = "0.1"
-DocStringExtensions = "0.8"
+DocStringExtensions = "0.8, 0.9"
 Reexport = "1"
 WindowAbstractions = "0.6"
 XKeyboard = "0.1"
