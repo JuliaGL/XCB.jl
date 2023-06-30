@@ -2,8 +2,8 @@
 Translate mouse or modifier state into the corresponding XCB value.
 """
 function state_xcb(event::Event)
-    is_key_event(event) && return state_xcb(event.key_event.modifiers)
-    is_button_event(event) && return state_xcb(event.mouse_event.state)
+    event.type in KEY_EVENT && return state_xcb(event.key_event.modifiers)
+    event.type in BUTTON_EVENT && return state_xcb(event.mouse_event.state)
     0
 end
 
@@ -27,10 +27,10 @@ function response_type_xcb(event::Event)
 end
 
 function event_type_xcb(event::Event)
-    is_key_event(event) && return xcb_key_press_event_t
-    is_button_event(event) && return xcb_button_press_event_t
+    event.type in KEY_EVENT && return xcb_key_press_event_t
+    event.type in BUTTON_EVENT && return xcb_button_press_event_t
     event.type == POINTER_MOVED && return xcb_motion_notify_event_t
-    is_pointer_event(event) && return xcb_enter_notify_event_t
+    event.type in POINTER_EVENT && return xcb_enter_notify_event_t
     event.type == WINDOW_RESIZED && return xcb_configure_notify_event_t
     event.type == WINDOW_EXPOSED && return xcb_expose_event_t
     error("No event type corresponding to $(event.type)")
@@ -45,8 +45,8 @@ function button_xcb(button::MouseButton)
 end
 
 function detail_xcb(wm::XWindowManager, event::Event)
-    is_button_event(event) && return xcb_button_t(iszero(event.mouse_event.button) ? 0 : log2(Int(event.mouse_event.button)))
-    is_key_event(event) && return PhysicalKey(wm.keymap, event.key_event.key_name).code
+    event.type in BUTTON_EVENT && return xcb_button_t(iszero(event.mouse_event.button) ? 0 : log2(Int(event.mouse_event.button)))
+    event.type in KEY_EVENT && return PhysicalKey(wm.keymap, event.key_event.key_name).code
     event.type == POINTER_MOVED && return UInt8(XCB_MOTION_NORMAL)
     event.type == POINTER_ENTERED && return XCB_ENTER_NOTIFY
     event.type == POINTER_EXITED && return XCB_LEAVE_NOTIFY
