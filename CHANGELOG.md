@@ -1,5 +1,9 @@
 # Changelog for XCB.jl
 
+## Version `v0.7`
+
+- ![BREAKING][badge-breaking] ![Enhancement][badge-enhancement] The utility functions `is_key_event`, `is_button_event`, `is_pointer_event` and `is_window_event` have been removed, in favor of new bitmask combinations `KEY_EVENT`, `BUTTON_EVENT`, `POINTER_EVENT` and `WINDOW_EVENT`.
+
 ## Version `v0.6`
 
 - ![BREAKING][badge-breaking] Adaptation to upstream changes to WindowAbstractions.jl. Check out the related [CHANGELOG](https://github.com/serenity4/WindowAbstractions.jl/blob/master/CHANGELOG.md), some of these changes having a significant impact on XCB.jl.

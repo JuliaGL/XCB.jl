@@ -13,7 +13,7 @@ function main(wm)
         elseif event.type == KEY_RELEASED
             active_modifiers = event.key_event.modifiers & ~event.key_event.consumed_modifiers
             @info "Released $(event.key_event.key)" * (iszero(active_modifiers) ? "" : " with active modifiers $active_modifiers")
-        elseif is_button_event(event)
+        elseif event.type in BUTTON_EVENT
             print_button(event)
         elseif event.type == WINDOW_EXPOSED
             @info "Window exposed"
