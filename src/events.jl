@@ -84,10 +84,12 @@ Event(wm::XWindowManager, win::XCBWindow, event::xcb_focus_in_event_t, t) =
     Event(response_type(event) == XCB_FOCUS_IN ? WINDOW_GAINED_FOCUS : WINDOW_LOST_FOCUS, nothing, (0.0, 0.0), t, win)
 
 function is_delete_request(event::xcb_client_message_event_t, win::XCBWindow)
-    ed_8 = Int.(event.data.data8)
-    event_data32_1 = ed_8[1] + ed_8[2] * 2^8 + ed_8[3] * 2^16 + ed_8[4] * 2^24
-    event_data32_1 == win.delete_request
+    data = deserialize_delete_request_data(event.data.data8)
+    data == win.delete_request
 end
+
+serialize_delete_request_data(delete_request::xcb_atom_t) = ntuple(i -> i ≤ 4 ? UInt8((delete_request << 8(4 - i)) >> 24) : 0x00, 20)
+deserialize_delete_request_data(bytes) = xcb_atom_t(Int(bytes[1]) + Int(bytes[2]) << 8 + Int(bytes[3]) << 16 + Int(bytes[4]) << 24)
 
 function poll_for_events!(queue::EventQueue{XWindowManager})
     event = xcb_poll_for_event(queue.wm.conn)

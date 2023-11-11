@@ -1,8 +1,8 @@
 using XCB
 using Test
 
-function main(wm)
-    for event in EventQueue(wm)
+function main(wm, queue = EventQueue(wm))
+    for event in queue
         if event.type == WINDOW_CLOSED
             close(wm, event.win)
         elseif event.type == KEY_PRESSED
@@ -53,11 +53,6 @@ function on_pressed_key(wm, event)
             write(io, String(wm.keymap))
         end
     end
-    if matches(key"f", event)
-        send = send_event(wm, win)
-        @info "Faking input: sending key AD01 to quit (requires an english keyboard layout to be translated to the relevant symbol 'q')"
-        return send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AD01), NO_MODIFIERS))
-    end
 
     (; gc) = win
     set_attributes(gc, [XCB.XCB_GC_FOREGROUND], [rand(1:16_777_215)])
@@ -74,12 +69,14 @@ function test()
     ctx = GraphicsContext(win, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
     attach_graphics_context!(win, ctx)
     send = send_event(wm, win)
+    queue = EventQueue(wm; record_history = true)
 
     if interactive
-        main(wm)
+        main(wm, queue)
+        isfile("keymap.c") && rm("keymap.c")
     else
         @info "Running window asynchronously"
-        task = @async main(wm)
+        task = @async main(wm, queue)
         @info "Sending fake inputs"
         send(BUTTON_PRESSED, MouseEvent(BUTTON_LEFT, BUTTON_NONE))
         send(BUTTON_RELEASED, MouseEvent(BUTTON_LEFT, BUTTON_LEFT))
@@ -92,17 +89,33 @@ function test()
         send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC09)))
         send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02)))
         send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02)))
-        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04)))
-        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC04)))
+        sleep(0.5)
+        @info "Sending WINDOW_CLOSED event"
+        send(WINDOW_CLOSED)
         @info "Waiting for window to close"
         wait(task)
         @test !istaskfailed(task)
         @test isfile("keymap.c")
+        isfile("keymap.c") && rm("keymap.c")
     end
+
+    events = save_history(wm, queue)
+
+    @info "Replaying events..."
+    wm = XWindowManager()
+    screen = current_screen(wm)
+    win = XCBWindow(wm; screen, x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
+    ctx = GraphicsContext(win, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
+    attach_graphics_context!(win, ctx)
+    task = @async main(wm)
+    replay_history(wm, events)
+    wait(task)
+    @test !istaskfailed(task)
     isfile("keymap.c") && rm("keymap.c")
+
     nothing
 end
 
 @testset "XCB.jl" begin
-    @test isnothing(test())
+    test()
 end;

@@ -79,8 +79,9 @@ end
 function extent(win::XCBWindow)
     geometry_cookie = xcb_get_geometry(win.conn, win.id)
     geometry_reply = xcb_get_geometry_reply(win.conn, geometry_cookie, C_NULL)
-    geometry_reply == C_NULL && throw(InvalidWindow(win))
-    getproperty.(Ref(unsafe_load(geometry_reply)), (:width, :height))
+    geometry_reply == C_NULL && return (zero(UInt16), zero(UInt16))
+    data = unsafe_load(geometry_reply)
+    data.width, data.height
 end
 
 function resize(win::XCBWindow, extent)

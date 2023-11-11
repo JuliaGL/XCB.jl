@@ -38,7 +38,9 @@ import WindowAbstractions: set_title,
                            KeyEvent,
                            ModifierState,
                            Event,
-                           EventQueue
+                           EventQueue,
+                           save_history,
+                           replay_history
 
 include("LibXCB.jl")
 @reexport using .LibXCB
