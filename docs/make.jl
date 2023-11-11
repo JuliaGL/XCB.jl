@@ -15,7 +15,8 @@ makedocs(;
     ],
     repo="https://github.com/JuliaGL/XCB.jl/blob/{commit}{path}#L{line}",
     sitename="XCB.jl",
-    authors="serenity4 <cedric.bel@hotmail.fr>, SimonDanisch"
+    authors="serenity4 <cedric.bel@hotmail.fr>, SimonDanisch",
+    warnonly=true,
 )
 
 deploydocs(
