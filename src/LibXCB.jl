@@ -1,8 +1,11 @@
 module LibXCB
 
 using BitMasks: @bitmask
-using Xorg_libxcb_jll: libxcb, libxcb_xkb
-using Xorg_xcb_util_jll: libxcb_util
+using Xorg_libxcb_jll: Xorg_libxcb_jll
+@static if Xorg_libxcb_jll.is_available()
+  using Xorg_libxcb_jll: libxcb, libxcb_xkb
+  using Xorg_xcb_util_jll: libxcb_util
+end
 
 const IS_LIBC_MUSL = occursin("musl", Base.BUILD_TRIPLET)
 
