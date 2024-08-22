@@ -49,8 +49,18 @@ function button_xcb(button::MouseButton)
   button == BUTTON_SCROLL_DOWN && return XCB_BUTTON_INDEX_5
 end
 
+function detail_xcb_button(button::MouseButton)::xcb_button_t
+    button == BUTTON_NONE && return 0
+    button == BUTTON_LEFT && return 1
+    button == BUTTON_MIDDLE && return 2
+    button == BUTTON_RIGHT && return 3
+    button == BUTTON_SCROLL_UP && return 4
+    button == BUTTON_SCROLL_DOWN && return 5
+    error("Unknown button $button")
+end
+
 function detail_xcb(wm::XWindowManager, event::Event)
-    event.type in BUTTON_EVENT && return xcb_button_t(iszero(event.mouse_event.button) ? 0 : log2(Int(event.mouse_event.button)))
+    event.type in BUTTON_EVENT && return detail_xcb_button(event.mouse_event.button)
     event.type in KEY_EVENT && return PhysicalKey(wm.keymap, event.key_event.key_name).code
     event.type == POINTER_MOVED && return UInt8(XCB_MOTION_NORMAL)
     event.type == POINTER_ENTERED && return XCB_ENTER_NOTIFY
@@ -82,11 +92,11 @@ end
 
 hex(x) = "0x$(string(x, base=16))"
 
-function send_event(wm::XWindowManager, win::XCBWindow, event_type::EventType, data = nothing; location = (0.0, 0.0))
-    send_event(wm, Event(event_type, data, location, floor(time()), win))
+function send_event(wm::XWindowManager, win::XCBWindow, event_type::EventType, data = nothing; location = (0.0, 0.0), time = time())
+    send_event(wm, Event(event_type, data, location, time, win))
 end
 
-send_event(wm::XWindowManager, win::XCBWindow) = (event_type, data = nothing; location = (0.0, 0.0)) -> send_event(wm, win, event_type, data; location)
+send_event(wm::XWindowManager, win::XCBWindow) = (event_type, data = nothing; location = (0.0, 0.0), time = time()) -> send_event(wm, win, event_type, data; location, time)
 
 struct WindowRef <: AbstractWindow
     number::Int64

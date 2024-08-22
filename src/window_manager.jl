@@ -25,3 +25,9 @@ function Base.close(wm::XWindowManager, win::XCBWindow)
     delete!(wm.windows, win.id)
     finalize(win)
 end
+
+function Base.show(io::IO, wm::XWindowManager)
+    n = length(wm.windows)
+    number = iszero(n) ? "no" : n
+    print(io, XWindowManager, '(', wm.conn, ", ", n, " active window", n == 1 ? "" : "s", ')')
+end
