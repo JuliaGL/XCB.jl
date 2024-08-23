@@ -2,13 +2,15 @@
 Translate mouse or modifier state into the corresponding XCB value.
 """
 function state_xcb(event::Event)
-    event.type in KEY_EVENT && return state_xcb(event.key_event.modifiers)
-    event.type in BUTTON_EVENT && return state_xcb(event.mouse_event.state)
+    event.type == POINTER_MOVED && return state_xcb(event.pointer_state)
+    in(event.type, KEY_EVENT) && return state_xcb(event.key_event.modifiers)
+    in(event.type, BUTTON_EVENT) && return state_xcb(event.mouse_event.state)
     0
 end
 
-state_xcb(s::MouseButton) = UInt(s)
+state_xcb(s::MouseButton) = xcb_button(s)
 state_xcb(s::ModifierState) = xcb_mod_mask_t(UInt8(s))
+state_xcb(s::PointerState) = (UInt16(s.state) << 8) + UInt8(s.modifiers)
 
 """
 Translate an action into its corresponding XCB value.
@@ -41,7 +43,7 @@ function event_type_xcb(event::Event)
     error("No event type corresponding to $(event.type)")
 end
 
-function button_xcb(button::MouseButton)
+function xcb_button_index_t(button::MouseButton)
   button == BUTTON_LEFT && return XCB_BUTTON_INDEX_1
   button == BUTTON_MIDDLE && return XCB_BUTTON_INDEX_2
   button == BUTTON_RIGHT && return XCB_BUTTON_INDEX_3
@@ -49,7 +51,7 @@ function button_xcb(button::MouseButton)
   button == BUTTON_SCROLL_DOWN && return XCB_BUTTON_INDEX_5
 end
 
-function detail_xcb_button(button::MouseButton)::xcb_button_t
+function xcb_button(button::MouseButton)::xcb_button_t
     button == BUTTON_NONE && return 0
     button == BUTTON_LEFT && return 1
     button == BUTTON_MIDDLE && return 2
@@ -60,8 +62,8 @@ function detail_xcb_button(button::MouseButton)::xcb_button_t
 end
 
 function detail_xcb(wm::XWindowManager, event::Event)
-    event.type in BUTTON_EVENT && return detail_xcb_button(event.mouse_event.button)
-    event.type in KEY_EVENT && return PhysicalKey(wm.keymap, event.key_event.key_name).code
+    in(event.type, BUTTON_EVENT) && return xcb_button(event.mouse_event.button)
+    in(event.type, KEY_EVENT) && return PhysicalKey(wm.keymap, event.key_event.key_name).code
     event.type == POINTER_MOVED && return UInt8(XCB_MOTION_NORMAL)
     event.type == POINTER_ENTERED && return XCB_ENTER_NOTIFY
     event.type == POINTER_EXITED && return XCB_LEAVE_NOTIFY
