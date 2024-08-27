@@ -62,7 +62,7 @@ end
 rectangle = Ref(XCB.xcb_rectangle_t(20, 20, 60, 60))
 interactive = ENV["DISPLAY"] ≠ ":99"
 
-function test()
+function test(; replay_events = !interactive)
     wm = XWindowManager()
     screen = current_screen(wm)
     win = XCBWindow(wm; screen, x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
@@ -101,6 +101,7 @@ function test()
 
     events = save_history(wm, queue)
 
+    replay_events || return
     @info "Replaying events..."
     wm = XWindowManager()
     screen = current_screen(wm)
