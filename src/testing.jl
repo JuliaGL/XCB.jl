@@ -79,7 +79,7 @@ function event_xcb(wm::XWindowManager, e::Event)
     T === xcb_configure_notify_event_t && return T(response_type_xcb(e), 0, 0, e.win.id, e.win.id, 0, x, y, wx, wy, 0, 0, 0)
     T === xcb_focus_in_event_t && return T(response_type_xcb(e), detail_xcb(wm, e), 0, e.win.id, 0, (0, 0, 0))
     e.type == WINDOW_CLOSED && return T(response_type_xcb(e), 32, 0, e.win.id, 0x00000183, xcb_client_message_data_t(serialize_delete_request_data(e.win.delete_request)))
-    T(response_type_xcb(e), detail_xcb(wm, e), 0, 0, e.win.parent_id, e.win.id, 0, 0, 0, x, y, state_xcb(e), true, false)
+    T(response_type_xcb(e), detail_xcb(wm, e), 0, 0, e.win.screen.root, e.win.id, 0, 0, 0, x, y, state_xcb(e), true, false)
 end
 
 send_event(wm::XWindowManager, e::Event) = send_event(e.win, event_xcb(wm, e))

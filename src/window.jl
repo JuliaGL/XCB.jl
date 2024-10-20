@@ -4,33 +4,32 @@ Window type used with the XCB API.
 mutable struct XCBWindow <: AbstractWindow
     conn::Connection
     id::xcb_window_t
-    parent_id::xcb_window_t
-    visual_id::xcb_visualid_t
+    screen::xcb_screen_t
     delete_request::xcb_atom_t
     gc::Union{Nothing,GraphicsContext}
 end
 
 """
-Create a new window whose parent is given by `parent_id` and visual by `visual_id`.
+Create a new window on the provided `screen`.
 """
-function XCBWindow(conn, parent_id, visual_id; depth=XCB_COPY_FROM_PARENT, x=0, y=0, width=512, height=512, border_width=1, class=XCB_WINDOW_CLASS_INPUT_OUTPUT, window_title="", icon_title=nothing, map=true, attributes=[], values=[])
+function XCBWindow(conn, screen::xcb_screen_t; depth=XCB_COPY_FROM_PARENT, x=0, y=0, width=512, height=512, border_width=1, class=XCB_WINDOW_CLASS_INPUT_OUTPUT, window_title="", icon_title=nothing, map=true, attributes=[], values=[])
     win_id = xcb_generate_id(conn)
     xcb_create_window(
         conn,
         depth,
         win_id,
-        parent_id,
+        screen.root,
         x,
         y,
         width,
         height,
         border_width,
         class,
-        visual_id,
+        screen.root_visual,
         0,
         C_NULL,
     )
-    win = XCBWindow(conn, win_id, parent_id, visual_id, delete_request(conn, win_id), nothing)
+    win = XCBWindow(conn, win_id, screen, delete_request(conn, win_id), nothing)
 
     set_event_mask(win, keys(event_type_bits))
     set_attributes(win, attributes, values)
@@ -43,11 +42,6 @@ function XCBWindow(conn, parent_id, visual_id; depth=XCB_COPY_FROM_PARENT, x=0, 
     map && map_window(win)
     Base.finalizer(x -> @check(:error, xcb_destroy_window(x.conn, x.id)), win)
 end
-
-"""
-Create a new window on the provided `screen`.
-"""
-XCBWindow(conn::Connection, screen; kwargs...) = XCBWindow(conn, screen.root, screen.root_visual; kwargs...)
 
 """
 Create a new window on the current screen.
