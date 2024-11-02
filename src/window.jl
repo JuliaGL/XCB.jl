@@ -12,7 +12,7 @@ end
 """
 Create a new window on the provided `screen`.
 """
-function XCBWindow(conn, screen::xcb_screen_t; depth=XCB_COPY_FROM_PARENT, x=0, y=0, width=512, height=512, border_width=1, class=XCB_WINDOW_CLASS_INPUT_OUTPUT, window_title="", icon_title=nothing, map=true, attributes=[], values=[])
+function XCBWindow(conn, screen::xcb_screen_t; depth=XCB_COPY_FROM_PARENT, x=0, y=0, width=512, height=512, border_width=1, class=XCB_WINDOW_CLASS_INPUT_OUTPUT, window_title="", icon_title=nothing, map=true, attributes=[], values=[], with_decorations=true)
     win_id = xcb_generate_id(conn)
     xcb_create_window(
         conn,
@@ -30,6 +30,7 @@ function XCBWindow(conn, screen::xcb_screen_t; depth=XCB_COPY_FROM_PARENT, x=0, 
         C_NULL,
     )
     win = XCBWindow(conn, win_id, screen, delete_request(conn, win_id), nothing)
+    !with_decorations && XCB.hide_decorations(win)
 
     set_event_mask(win, keys(event_type_bits))
     set_attributes(win, attributes, values)
@@ -124,3 +125,11 @@ end
 attach_graphics_context!(win::XCBWindow, gc::GraphicsContext) = setproperty!(win, :gc, gc)
 
 GraphicsContext(win::XCBWindow; kwargs...) = GraphicsContext(win.conn, win.id; kwargs...)
+
+function hide_decorations(win::XCBWindow)
+    name = "_MOTIF_WM_HINTS"
+    cookie = xcb_intern_atom(win.conn, 0, length(name), "_MOTIF_WM_HINTS" )
+    reply = unsafe_load(xcb_intern_atom_reply(win.conn, cookie, C_NULL))
+    data = (; flags = UInt32(2), functions = UInt32(0), decorations = UInt32(0), input_mode = Int32(0), status = UInt32(0))
+    @check xcb_change_property(win.conn, XCB_PROP_MODE_REPLACE, win.id, reply.atom, reply.atom, 32, 5, Ref(data))
+end

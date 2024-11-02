@@ -52,6 +52,8 @@ function on_pressed_key(wm, event)
         return open(dest, "w") do io
             write(io, String(wm.keymap))
         end
+    elseif matches(key"d", event)
+        XCB.hide_decorations(win)
     end
 
     (; gc) = win
@@ -89,6 +91,8 @@ function test(; replay_events = !interactive)
         send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC09)))
         send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02)))
         send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC02)))
+        send(KEY_PRESSED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC03)))
+        send(KEY_RELEASED, KeyEvent(wm.keymap, PhysicalKey(wm.keymap, :AC03)))
         sleep(0.5)
         @info "Sending WINDOW_CLOSED event"
         send(WINDOW_CLOSED)
