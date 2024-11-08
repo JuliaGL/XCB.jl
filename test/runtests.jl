@@ -71,6 +71,7 @@ function test(; replay_events = !interactive)
     ctx = GraphicsContext(win, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
     attach_graphics_context!(win, ctx)
     send = send_event(wm, win)
+    send = (_ -> sleep(0.01)) ∘ send
     queue = EventQueue(wm; record_history = true)
 
     if interactive
@@ -113,7 +114,7 @@ function test(; replay_events = !interactive)
     ctx = GraphicsContext(win, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
     attach_graphics_context!(win, ctx)
     task = @async main(wm)
-    replay_history(wm, events)
+    replay_history(wm, events; time_factor = 0.1)
     wait(task)
     @test !istaskfailed(task)
     isfile("keymap.c") && rm("keymap.c")

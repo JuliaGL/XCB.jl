@@ -107,20 +107,23 @@ end
 function save_history(wm::XWindowManager, queue::EventQueue{XWindowManager,XCBWindow})
     events = Event{WindowRef}[]
     windows = XCBWindow[]
+    previous_time = 0.0
     for event in queue.history
         i = findfirst(==(event.win), windows)
         isnothing(i) && push!(windows, event.win)
         winref = WindowRef(something(i, lastindex(windows)))
-        push!(events, Event(event.type, event.data, event.location, event.time, winref))
+        Δt = previous_time == 0 ? 0.0 : event.time - previous_time
+        previous_time = event.time
+        push!(events, Event(event.type, event.data, event.location, Δt, winref))
     end
     events
 end
 
 # FIXME: Events will be triggered multiple times if an event triggers another. How should we tackle that?
-function replay_history(wm::XWindowManager, events::AbstractVector{Event{WindowRef}})
+function replay_history(wm::XWindowManager, events::AbstractVector{Event{WindowRef}}; time_factor = 1.0)
     windows = Dict{WindowRef,XCBWindow}()
     all_windows = xcb_window_t[]
-    replay_time = nothing
+    replay_time = time()
     for event in events
         win = get!(windows, event.win) do
             # Assume that window IDs will be ordered chronologically.
@@ -129,9 +132,9 @@ function replay_history(wm::XWindowManager, events::AbstractVector{Event{WindowR
             i = event.win.number
             wm.windows[all_windows[i]]
         end
-        wait_for(event.time - something(replay_time, event.time))
-        replay_time = event.time
-        event = Event(event.type, event.data, event.location, time(), win)
+        Δt = event.time * time_factor
+        wait_for(Δt)
+        event = Event(event.type, event.data, event.location, replay_time + Δt, win)
         send_event(wm, event)
     end
 end
