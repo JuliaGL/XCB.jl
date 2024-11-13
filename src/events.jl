@@ -58,7 +58,12 @@ location(event::xcb_configure_notify_event_t) = (event.x, event.y)
 location(::xcb_client_message_event_t) = (0, 0)
 
 location(event, win) = coordinates(location(event), win)
-coordinates(xs, win) = Float64.(xs ./ extent(win))
+function coordinates((x, y), win)
+    width, height = extent(win)
+    x = ifelse(iszero(width), 0.0, x/width)
+    y = ifelse(iszero(height), 0.0, y/height)
+    (x, y)
+end
 
 function Event(wm::XWindowManager, win::XCBWindow, event::xcb_button_press_event_t, t)
     data = MouseEvent(event)
