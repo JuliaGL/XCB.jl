@@ -109,10 +109,10 @@ The connection is taken to be the first argument of `expr`. `expr` can be a call
 
 # Examples
 ```
-julia> @macroexpand @flush xcb_unmap_window(win.conn, win.id)
+julia> @macroexpand @flush xcb_unmap_window(window.conn, window.id)
 quote
-    xcb_unmap_window(win.conn, win.id)
-    (flush)(win.conn)
+    xcb_unmap_window(window.conn, window.id)
+    (flush)(window.conn)
 end
 ```
 """

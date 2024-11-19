@@ -4,11 +4,11 @@ using Test
 function main(wm, queue = EventQueue(wm))
     for event in queue
         if event.type == WINDOW_CLOSED
-            close(wm, event.win)
+            close(wm, event.window)
         elseif event.type == KEY_PRESSED
             print_key_info(stdout, wm.keymap, event.key_event)
             println()
-            set_title(event.win, "Random title $(rand())")
+            set_title(event.window, "Random title $(rand())")
             on_pressed_key(wm, event)
         elseif event.type == KEY_RELEASED
             active_modifiers = event.key_event.modifiers & ~event.key_event.consumed_modifiers
@@ -43,9 +43,9 @@ end
 
 
 function on_pressed_key(wm, event)
-    (; win) = event
-    any(matches(event), [key"q", key"ctrl+q"]) && return close(wm, win)
-    matches(key"s", event) && return resize(win, extent(win) .+ 1)
+    (; window) = event
+    any(matches(event), [key"q", key"ctrl+q"]) && return close(wm, window)
+    matches(key"s", event) && return resize(window, extent(window) .+ 1)
     if matches(key"i", event)
         dest = abspath("keymap.c")
         println("Dumping keymap info to $dest")
@@ -53,12 +53,12 @@ function on_pressed_key(wm, event)
             write(io, String(wm.keymap))
         end
     elseif matches(key"d", event)
-        XCB.hide_decorations(win)
+        XCB.hide_decorations(window)
     end
 
-    (; gc) = win
+    (; gc) = window
     set_attributes(gc, [XCB.XCB_GC_FOREGROUND], [rand(1:16_777_215)])
-    XCB.@flush XCB.xcb_poly_fill_rectangle(win.conn, win.id, gc.id, UInt32(1), rectangle)
+    XCB.@flush XCB.xcb_poly_fill_rectangle(window.conn, window.id, gc.id, UInt32(1), rectangle)
 end
 
 rectangle = Ref(XCB.xcb_rectangle_t(20, 20, 60, 60))
@@ -67,10 +67,10 @@ interactive = ENV["DISPLAY"] ≠ ":99"
 function test(; replay_events = !interactive)
     wm = XWindowManager()
     screen = current_screen(wm)
-    win = XCBWindow(wm; screen, x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
-    ctx = GraphicsContext(win, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
-    attach_graphics_context!(win, ctx)
-    send = send_event(wm, win)
+    window = XCBWindow(wm; screen, x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
+    ctx = GraphicsContext(window, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
+    attach_graphics_context!(window, ctx)
+    send = send_event(wm, window)
     send = (_ -> sleep(0.01)) ∘ send
     queue = EventQueue(wm; record_history = true)
 
@@ -110,9 +110,9 @@ function test(; replay_events = !interactive)
     @info "Replaying events..."
     wm = XWindowManager()
     screen = current_screen(wm)
-    win = XCBWindow(wm; screen, x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
-    ctx = GraphicsContext(win, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
-    attach_graphics_context!(win, ctx)
+    window = XCBWindow(wm; screen, x=0, y=1000, border_width=50, window_title="XCB window", icon_title="XCB", attributes=[XCB.XCB_CW_BACK_PIXEL], values=[screen.black_pixel])
+    ctx = GraphicsContext(window, attributes=[XCB.XCB_GC_FOREGROUND, XCB.XCB_GC_GRAPHICS_EXPOSURES], values=[screen.black_pixel, 0])
+    attach_graphics_context!(window, ctx)
     task = @async main(wm)
     replay_history(wm, events; time_factor = 0.1)
     wait(task)

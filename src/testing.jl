@@ -72,33 +72,33 @@ end
 
 function event_xcb(wm::XWindowManager, e::Event)
     T = event_type_xcb(e)
-    wx, wy = extent(e.win)
+    wx, wy = extent(e.window)
     x, y = (wx, wy) .* e.location
     x, y = round(Int16, x), round(Int16, y)
-    T === xcb_expose_event_t && return T(response_type_xcb(e), 0, 0, e.win.id, x, y, wx, wy, 0, (0, 0))
-    T === xcb_configure_notify_event_t && return T(response_type_xcb(e), 0, 0, e.win.id, e.win.id, 0, x, y, wx, wy, 0, 0, 0)
-    T === xcb_focus_in_event_t && return T(response_type_xcb(e), detail_xcb(wm, e), 0, e.win.id, 0, (0, 0, 0))
-    e.type == WINDOW_CLOSED && return T(response_type_xcb(e), 32, 0, e.win.id, 0x00000183, xcb_client_message_data_t(serialize_delete_request_data(e.win.delete_request)))
-    T(response_type_xcb(e), detail_xcb(wm, e), 0, 0, e.win.screen.root, e.win.id, 0, 0, 0, x, y, state_xcb(e), true, false)
+    T === xcb_expose_event_t && return T(response_type_xcb(e), 0, 0, e.window.id, x, y, wx, wy, 0, (0, 0))
+    T === xcb_configure_notify_event_t && return T(response_type_xcb(e), 0, 0, e.window.id, e.window.id, 0, x, y, wx, wy, 0, 0, 0)
+    T === xcb_focus_in_event_t && return T(response_type_xcb(e), detail_xcb(wm, e), 0, e.window.id, 0, (0, 0, 0))
+    e.type == WINDOW_CLOSED && return T(response_type_xcb(e), 32, 0, e.window.id, 0x00000183, xcb_client_message_data_t(serialize_delete_request_data(e.window.delete_request)))
+    T(response_type_xcb(e), detail_xcb(wm, e), 0, 0, e.window.screen.root, e.window.id, 0, 0, 0, x, y, state_xcb(e), true, false)
 end
 
-send_event(wm::XWindowManager, e::Event) = send_event(e.win, event_xcb(wm, e))
+send_event(wm::XWindowManager, e::Event) = send_event(e.window, event_xcb(wm, e))
 
-function send_event(win::XCBWindow, event)
+function send_event(window::XCBWindow, event)
     ref = Ref(event)
     GC.@preserve ref begin
         event_ptr = Ptr{Cchar}(Base.unsafe_convert(Ptr{typeof(event)}, ref))
-        @flush @check :error xcb_send_event(win.conn, false, win.id, 0, event_ptr)
+        @flush @check :error xcb_send_event(window.conn, false, window.id, 0, event_ptr)
     end
 end
 
 hex(x) = "0x$(string(x, base=16))"
 
-function send_event(wm::XWindowManager, win::XCBWindow, event_type::EventType, data = nothing; location = (0.0, 0.0), time = time())
-    send_event(wm, Event(event_type, data, location, time, win))
+function send_event(wm::XWindowManager, window::XCBWindow, event_type::EventType, data = nothing; location = (0.0, 0.0), time = time())
+    send_event(wm, Event(event_type, data, location, time, window))
 end
 
-send_event(wm::XWindowManager, win::XCBWindow) = (event_type, data = nothing; location = (0.0, 0.0), time = time()) -> send_event(wm, win, event_type, data; location, time)
+send_event(wm::XWindowManager, window::XCBWindow) = (event_type, data = nothing; location = (0.0, 0.0), time = time()) -> send_event(wm, window, event_type, data; location, time)
 
 struct WindowRef <: AbstractWindow
     number::Int64
@@ -109,8 +109,8 @@ function save_history(wm::XWindowManager, queue::EventQueue{XWindowManager,XCBWi
     windows = XCBWindow[]
     previous_time = 0.0
     for event in queue.history
-        i = findfirst(==(event.win), windows)
-        isnothing(i) && push!(windows, event.win)
+        i = findfirst(==(event.window), windows)
+        isnothing(i) && push!(windows, event.window)
         winref = WindowRef(something(i, lastindex(windows)))
         Δt = previous_time == 0 ? 0.0 : event.time - previous_time
         previous_time = event.time
@@ -125,16 +125,16 @@ function replay_history(wm::XWindowManager, events::AbstractVector{Event{WindowR
     all_windows = xcb_window_t[]
     replay_time = time()
     for event in events
-        win = get!(windows, event.win) do
+        window = get!(windows, event.window) do
             # Assume that window IDs will be ordered chronologically.
             union!(all_windows, keys(wm.windows))
             @assert issorted(all_windows) "Window IDs do not appear to be sorted chronologically"
-            i = event.win.number
+            i = event.window.number
             wm.windows[all_windows[i]]
         end
         Δt = event.time * time_factor
         wait_for(Δt)
-        event = Event(event.type, event.data, event.location, replay_time + Δt, win)
+        event = Event(event.type, event.data, event.location, replay_time + Δt, window)
         send_event(wm, event)
     end
 end
