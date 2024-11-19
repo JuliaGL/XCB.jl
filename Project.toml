@@ -1,6 +1,6 @@
 name = "XCB"
 uuid = "16167f82-ea26-5cba-b1de-ed6fd5e30a10"
-version = "0.7.7"
+version = "0.7.8"
 
 [deps]
 BitMasks = "a3e06817-fd65-4797-8291-16f435bc2529"
