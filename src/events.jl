@@ -78,7 +78,7 @@ end
 Event(wm::XWindowManager, window::XCBWindow, event::xcb_client_message_event_t, t) =
     Event(WINDOW_CLOSED, nothing, location(event, window), t, window)
 Event(wm::XWindowManager, window::XCBWindow, event::xcb_enter_notify_event_t, t) =
-    Event(response_type(event) == XCB_ENTER_NOTIFY ? POINTER_ENTERED : POINTER_EXITED, nothing, location(event, window), t, window)
+    Event(response_type(event) == XCB_ENTER_NOTIFY ? POINTER_ENTERED : POINTER_EXITED, PointerState(event), location(event, window), t, window)
 Event(wm::XWindowManager, window::XCBWindow, event::xcb_motion_notify_event_t, t) =
     Event(POINTER_MOVED, PointerState(event), location(event, window), t, window)
 Event(wm::XWindowManager, window::XCBWindow, event::xcb_expose_event_t, t) =

@@ -41,7 +41,6 @@ function print_button(event::Event)
     println("$(event.type): $button at $x, $y $printed_state")
 end
 
-
 function on_pressed_key(wm, event)
     (; window) = event
     any(matches(event), [key"q", key"ctrl+q"]) && return close(wm, window)
