@@ -120,11 +120,14 @@ function save_history(wm::XWindowManager, queue::EventQueue{XWindowManager,XCBWi
 end
 
 # FIXME: Events will be triggered multiple times if an event triggers another. How should we tackle that?
-function replay_history(wm::XWindowManager, events::AbstractVector{Event{WindowRef}}; time_factor = 1.0)
+function replay_history(wm::XWindowManager, events::AbstractVector{Event{WindowRef}};
+                        time_factor = 1.0, # lower is faster
+                        stop = nothing)
     windows = Dict{WindowRef,XCBWindow}()
     all_windows = xcb_window_t[]
     replay_time = time()
     for event in events
+        stop !== nothing && stop() && return
         window = get!(windows, event.window) do
             # Assume that window IDs will be ordered chronologically.
             union!(all_windows, keys(wm.windows))
