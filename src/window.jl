@@ -105,17 +105,6 @@ end
 
 get_parent(window::XCBWindow) = get_parent(window.conn, window.id)
 
-# function get_frame_window(window::XCBWindow)
-#     root = root_window(window)
-#     id = window.id
-#     for i in 1:100
-#         parent = get_parent(window.conn, id)
-#         parent == root && return id
-#         id = parent
-#     end
-#     @warn "Could not get frame window"
-# end
-
 function screen_center(screen::xcb_screen_t, window::XCBWindow)
     target = Int.((screen.width_in_pixels, screen.height_in_pixels)) .÷ 2
     target .- window.extent .÷ 2
@@ -213,14 +202,10 @@ get_extent(window::XCBWindow) = get_extent(window.id, window.conn)
 get_position(window::XCBWindow) = position_from_local_coordinates(window, (0, 0))
 
 function frame_offset(window::XCBWindow)
-    (; frame_extents) = window
-    frame_extents !== nothing && return .-((frame_extents[1], frame_extents[3]))
-    # frame === nothing && return (0, 0)
-    # border = border_width(window) .* (1, 1)
-    # frame_extent = get_extent(window.frame, window.conn)
-    # Int64.((window.extent .- frame_extent .+ border))
+    window.frame_extents === nothing && return (0, 0)
+    left, right, top, bottom = window.frame_extents
+    return (-left, -top)
 end
-# border_width(window::XCBWindow) = 1
 
 function position_from_local_coordinates(window::XCBWindow, (x, y))
     cookie = xcb_translate_coordinates(window.conn, window.id, window.screen.root, x, y)

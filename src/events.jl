@@ -52,9 +52,6 @@ function handle_event!(queue, ptr::Ptr{xcb_generic_event_t})
         wm.keymap = Keymap(wm.conn; setup_xkb = false)
         @debug "Keymap updated"
     elseif rt == XCB_MAP_NOTIFY
-        # If we ever need to get the frame, this would be a good place to get it.
-        # window.frame = get_frame_window(window)
-        # @assert window.frame !== window.id
     elseif rt == XCB_REPARENT_NOTIFY
     else
         @debug "Ignored event $rt"
