@@ -23,7 +23,7 @@ function response_type_xcb(event::Event)
     event.type == POINTER_ENTERED && return XCB_ENTER_NOTIFY
     event.type == POINTER_MOVED && return XCB_MOTION_NOTIFY
     event.type == POINTER_EXITED && return XCB_LEAVE_NOTIFY
-    event.type == WINDOW_RESIZED && return XCB_CONFIGURE_NOTIFY
+    event.type in (WINDOW_MOVED, WINDOW_RESIZED) && return XCB_CONFIGURE_NOTIFY
     event.type == WINDOW_EXPOSED && return XCB_EXPOSE
     event.type == WINDOW_GAINED_FOCUS && return XCB_FOCUS_IN
     event.type == WINDOW_LOST_FOCUS && return XCB_FOCUS_OUT
@@ -36,7 +36,7 @@ function event_type_xcb(event::Event)
     event.type in BUTTON_EVENT && return xcb_button_press_event_t
     event.type == POINTER_MOVED && return xcb_motion_notify_event_t
     event.type in POINTER_EVENT && return xcb_enter_notify_event_t
-    event.type == WINDOW_RESIZED && return xcb_configure_notify_event_t
+    event.type in (WINDOW_MOVED, WINDOW_RESIZED) && return xcb_configure_notify_event_t
     event.type == WINDOW_EXPOSED && return xcb_expose_event_t
     event.type in WINDOW_GAINED_FOCUS | WINDOW_LOST_FOCUS && return xcb_focus_in_event_t
     event.type == WINDOW_CLOSED && return xcb_client_message_event_t
@@ -70,19 +70,18 @@ function detail_xcb(wm::XWindowManager, event::Event)
     0
 end
 
-function event_xcb(wm::XWindowManager, e::Event)
-    T = event_type_xcb(e)
-    wx, wy = extent(e.window)
-    x, y = (wx, wy) .* e.location
-    x, y = round(Int16, x), round(Int16, y)
-    T === xcb_expose_event_t && return T(response_type_xcb(e), 0, 0, e.window.id, x, y, wx, wy, 0, (0, 0))
-    T === xcb_configure_notify_event_t && return T(response_type_xcb(e), 0, 0, e.window.id, e.window.id, 0, x, y, wx, wy, 0, 0, 0)
-    T === xcb_focus_in_event_t && return T(response_type_xcb(e), detail_xcb(wm, e), 0, e.window.id, 0, (0, 0, 0))
-    e.type == WINDOW_CLOSED && return T(response_type_xcb(e), 32, 0, e.window.id, 0x00000183, xcb_client_message_data_t(serialize_delete_request_data(e.window.delete_request)))
-    T(response_type_xcb(e), detail_xcb(wm, e), 0, 0, e.window.screen.root, e.window.id, 0, 0, 0, x, y, state_xcb(e), true, false)
+function event_xcb(wm::XWindowManager, event::Event)
+    (; window) = event
+    T = event_type_xcb(event)
+    location = round.(Int16, window.extent .* event.location)
+    response_type = response_type_xcb(event)
+    T === xcb_configure_notify_event_t && return T(response_type_xcb(e), 0, 0, window.id, window.id, 0, location..., window.extent..., 0, 0, 0)
+    T === xcb_expose_event_t && return T(response_type, 0, 0, window.id, location..., window.extent..., 0, (0, 0))
+    T === xcb_configure_notify_event_t && return T(response_type, 0, 0, window.id, window.id, 0, location..., window.extent..., 0, 0, 0)
+    T === xcb_focus_in_event_t && return T(response_type, detail_xcb(wm, event), 0, window.id, 0, (0, 0, 0))
+    event.type == WINDOW_CLOSED && return T(response_type, 32, 0, window.id, 0x00000183, xcb_client_message_data_t(serialize_delete_request_data(get_atom!(window, :WM_DELETE_WINDOW))))
+    T(response_type, detail_xcb(wm, event), 0, 0, window.screen.root, window.id, 0, 0, 0, location..., state_xcb(event), true, false)
 end
-
-send_event(wm::XWindowManager, e::Event) = send_event(e.window, event_xcb(wm, e))
 
 function send_event(window::XCBWindow, event)
     ref = Ref(event)
@@ -98,7 +97,11 @@ function send_event(wm::XWindowManager, window::XCBWindow, event_type::EventType
     send_event(wm, Event(event_type, data, location, time, window))
 end
 
-send_event(wm::XWindowManager, window::XCBWindow) = (event_type, data = nothing; location = (0.0, 0.0), time = time()) -> send_event(wm, window, event_type, data; location, time)
+function send_event(wm::XWindowManager, window::XCBWindow, event_type::EventType, position, extent, data = nothing; location = (0.0, 0.0), time = time())
+    send_event(wm, Event(event_type, data, location, time, window), position, extent)
+end
+
+send_event(wm::XWindowManager, window::XCBWindow) = (event_type, data = nothing; location = (0.0, 0.0), time = time()) -> send_event(wm, window, event_type, window.position, window.extent, data; location, time)
 
 struct WindowRef <: AbstractWindow
     number::Int64
@@ -120,13 +123,19 @@ function save_history(wm::XWindowManager, queue::EventQueue{XWindowManager,XCBWi
 end
 
 # FIXME: Events will be triggered multiple times if an event triggers another. How should we tackle that?
-function replay_history(wm::XWindowManager, events::AbstractVector{Event{WindowRef}};
+# We might want to have a way to block all client-generated inputs that are not sent by `replay_history`.
+# `replay_history` could set a global to disable event sending, while whitelisting itself so that events
+# sent by it are still allowed.
+function replay_history(wm::XWindowManager, events::AbstractVector{<:Event};
                         time_factor = 1.0, # lower is faster
                         stop = nothing)
     windows = Dict{WindowRef,XCBWindow}()
+    positions = Dict{XCBWindow, Tuple{Int,Int}}()
+    extents = Dict{XCBWindow, Tuple{Int,Int}}()
     all_windows = xcb_window_t[]
     replay_time = time()
     for event in events
+        isa(event.window, WindowRef) || throw(ArgumentError("Events must contain `WindowRef` windows; you can get some with `save_history(::AbstractWindowManager, ::EventQueue)`"))
         stop !== nothing && stop() && return
         window = get!(windows, event.window) do
             # Assume that window IDs will be ordered chronologically.
@@ -138,8 +147,24 @@ function replay_history(wm::XWindowManager, events::AbstractVector{Event{WindowR
         Δt = event.time * time_factor
         wait_for(Δt)
         event = Event(event.type, event.data, event.location, replay_time + Δt, window)
-        send_event(wm, event)
+        position = get!(positions, window, window.position)
+        extent = get!(extents, window, window.extent)
+        send_event(wm, event, position, extent)
+        if event.type === WINDOW_MOVED
+            positions[window] = position .+ event.movement
+        elseif event.type === WINDOW_RESIZED
+            positions[window] = position .+ event.movement
+            extents[window] = extent .+ event.resize
+        end
     end
+end
+
+send_event(wm::XWindowManager, event::Event) = send_event(event.window, event_xcb(wm, event))
+function send_event(wm::XWindowManager, event::Event, position, extent)
+    (; type, window) = event
+    type === WINDOW_RESIZED && return resize_window(window, position .+ event.movement, extent .+ event.resize)
+    type === WINDOW_MOVED && return move_window_to(window, position .+ event.movement)
+    send_event(wm, event)
 end
 
 function wait_for(Δt)

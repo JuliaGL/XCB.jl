@@ -16,14 +16,17 @@ using DocStringExtensions
     $(TYPEDFIELDS)
     """
 
+using Base: unsafe_convert
+const Optional{T} = Union{Nothing,T}
+
 using Reexport
 @reexport using WindowAbstractions
 @reexport using XKeyboard
 import XKeyboard: Keymap
 import WindowAbstractions: set_title,
                            set_icon_title,
-                           resize,
-                           extent,
+                           resize_window,
+                           move_window_to,
                            poll_for_events!,
                            window_type,
                            windows,
@@ -69,6 +72,7 @@ export
        XWindowManager,
        @check,
        @flush,
-       send_event
+       send_event,
+       WindowCorner, WINDOW_CORNER_BOTTOM_LEFT, WINDOW_CORNER_BOTTOM_RIGHT, WINDOW_CORNER_TOP_LEFT, WINDOW_CORNER_TOP_RIGHT
 
 end # module

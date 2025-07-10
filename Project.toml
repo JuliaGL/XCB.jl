@@ -1,6 +1,6 @@
 name = "XCB"
 uuid = "16167f82-ea26-5cba-b1de-ed6fd5e30a10"
-version = "0.7.10"
+version = "0.8.0"
 
 [deps]
 BitMasks = "a3e06817-fd65-4797-8291-16f435bc2529"
@@ -15,7 +15,7 @@ Xorg_xcb_util_jll = "2def613f-5ad1-5310-b15b-b15d46f528f5"
 BitMasks = "0.1"
 DocStringExtensions = "0.8, 0.9"
 Reexport = "1"
-WindowAbstractions = "0.8.0"
+WindowAbstractions = "0.8.1"
 XKeyboard = "0.1"
 Xorg_libxcb_jll = "1.13"
 Xorg_xcb_util_jll = "0.4"

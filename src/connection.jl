@@ -175,6 +175,13 @@ end
 
 macro check(request) esc(:(@check(:warn, $request))) end
 
+function load_and_free(ptr::Ptr)
+    ptr == C_NULL && return nothing
+    data = unsafe_load(ptr)
+    Libc.free(ptr)
+    return data
+end
+
 Base.showerror(io::IO, error::FlushError) = print("FlushError: server returned code $(error.code)")
 
 function Base.show(io::IO, setup::xcb_setup_t)

@@ -1,5 +1,11 @@
 # Changelog for XCB.jl
 
+## Version `v0.8`
+
+- ![BREAKING][badge-breaking] `extent` has been removed, and windows now contain `.position` and `.extent` fields that can be accessed to query position within their parent window and geometry, respectively.
+- ![Feature][badge-feature] A `WINDOW_MOVED` event type has been added, giving access to a `.movement::Tuple{Int64,Int64}` property for `Event`s that hold this type. This tuple gives information about the movement of the window origin (e.g. top-left for X11).
+- ![Enhancement][badge-enhancement] `WINDOW_RESIZE` events now also provide a `.movement` property, as described in the previous item, as well as a `resize` property, indicating indicates the difference in size with respect to the previous dimensions.
+
 ## Version `v0.7`
 
 - ![BREAKING][badge-breaking] ![Enhancement][badge-enhancement] The utility functions `is_key_event`, `is_button_event`, `is_pointer_event` and `is_window_event` have been removed, in favor of new bitmask combinations `KEY_EVENT`, `BUTTON_EVENT`, `POINTER_EVENT` and `WINDOW_EVENT`.
