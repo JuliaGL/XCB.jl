@@ -81,10 +81,11 @@ function request_frame_extents(window::XCBWindow)
     end
 end
 
-function process_property_notifications!(f, window)
+function process_property_notifications!(f, window, timeout = 2.0)
     # Note that we are draining EVERY event from the queue,
     # regardless of their type.
-    while !f()
+    t0 = time()
+    while !f() && (time() - t0 < timeout)
         ptr = xcb_poll_for_event(window.conn)
         ptr == C_NULL && (yield(); continue)
         rt = response_type(unsafe_load(ptr))
